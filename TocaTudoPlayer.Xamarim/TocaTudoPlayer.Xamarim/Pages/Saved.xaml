@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<TabbedPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" 
+             x:Name="tbpSaved"
+             x:Class="TocaTudoPlayer.Xamarim.Pages.Saved"
+             Title="TocaTudo - Salvos">
+    <!--<ContentPage.Content>
+        <Grid RowSpacing="0" IsVisible="false">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <uc_local:InternetConnControl/>
+            <Grid x:Name="frmSelecaoTipo" Grid.Row="0">
+                    <StackLayout Orientation="Horizontal" HorizontalOptions="CenterAndExpand">
+                        <pv:PancakeView Shadow="{pv:ShadowMarkup Color=#FF0000, Offset='10,10'}" CornerRadius="20" VerticalOptions="Center">
+                            <Button x:Name="btnAlbum" ImageSource="{StaticResource icon_album}" IsVisible="{Binding IsInternetAvaiable}" BorderColor="DarkOrange" BorderWidth="2"  CornerRadius="38" BackgroundColor="#6078a8" TextColor="White" Text="{x:Static resource:AppResource.MusicAlbumButton}" HeightRequest="40"  Clicked="SearchMusictActionButton_Clicked" FontSize="14" TextTransform="Lowercase"/>
+                        </pv:PancakeView>
+                        <pv:PancakeView Shadow="{pv:ShadowMarkup Color=#FF0000, Offset='10,10'}" CornerRadius="20" VerticalOptions="Center">
+                            <Button x:Name="btnMusic" ImageSource="{StaticResource icon_music}" IsVisible="{Binding IsInternetAvaiable}" CornerRadius="38" BackgroundColor="#6078a8" TextColor="White" Text="{x:Static resource:AppResource.MusicMusicButton}" Clicked="SearchMusictActionButton_Clicked" FontSize="14" HeightRequest="40" TextTransform="Lowercase"/>
+                        </pv:PancakeView>
+                        <pv:PancakeView Shadow="{pv:ShadowMarkup Color=#FF0000, Offset='10,10'}" CornerRadius="20" VerticalOptions="Center">
+                            <Button x:Name="btnSalvos" ImageSource="{StaticResource icon_arrow_down}" Text="{x:Static resource:AppResource.MusicSavedButton}" Clicked="SearchMusictActionButton_Clicked" CornerRadius="38" BackgroundColor="#6078a8" TextColor="White" FontSize="14" HeightRequest="40" TextTransform="Lowercase"/>
+                        </pv:PancakeView>
+                    </StackLayout>
+                </Grid>
+            <Grid x:Name="grdSearchSavedForm" Grid.Row="1" IsVisible="false" Margin="0, 0" ColumnSpacing="0" RowSpacing="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="35"></RowDefinition>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions >
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="btnSearchSavedFormAlbum" Grid.Row="0" Grid.Column="0" VerticalOptions="CenterAndExpand" HorizontalOptions="FillAndExpand" Text="{x:Static resource:AppResource.MusicAlbumButton}" TextColor="White" CornerRadius="0" BackgroundColor="#8e8e8e " Clicked="GrdSearchSavedForm_Clicked" Padding="0" TextTransform="Lowercase"/>
+                <Button x:Name="btnSearchSavedFormMusic" Grid.Row="0" Grid.Column="1" VerticalOptions="CenterAndExpand" HorizontalOptions="FillAndExpand" Text="{x:Static resource:AppResource.MusicMusicButton}" BackgroundColor="#dedede" CornerRadius="0"  Clicked="GrdSearchSavedForm_Clicked" Padding="0" TextTransform="Lowercase"/>
+            </Grid>
+            <StackLayout x:Name="stlMusicSearch" Grid.Row="1" Margin="5, 0" Orientation="Horizontal">
+                <dotMorten:AutoSuggestBox x:Name="txtSearchName" Text="{Binding MusicSearchedName}" TextChanged="TxtSearchName_TextChanged" QuerySubmitted="TxtSearchName_QuerySubmitted" HorizontalOptions="FillAndExpand"/>
+                <Button x:Name="btnSearch" Text="{x:Static resource:AppResource.MusicSearchButton}" IsVisible="{Binding SearchAlbumVisible}" Clicked="BtnSearch_Clicked" CommandParameter="{Binding MusicSearchedName}" HorizontalOptions="End" TextTransform="Lowercase" FontSize="14"/>
+            </StackLayout>
+            <ActivityIndicator x:Name="actInd" Grid.RowSpan="3" IsRunning="{Binding IsSearching}" IsVisible="{Binding IsSearching}" VerticalOptions="CenterAndExpand"/>
+            <ListView x:Name="lstvSavedAlbumPlaylist" IsVisible="false" ItemsSource="{Binding SavedAlbumPlaylist}" BackgroundColor="#F7F9FC" HorizontalOptions="FillAndExpand" SeparatorVisibility="None" SelectionMode="None" CachingStrategy="RetainElement">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <ViewCell>
+                            <ViewCell.View>
+                                <Frame CornerRadius="10" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand" Padding="5" Margin="1, 1" BackgroundColor="#eff1f7" x:DataType="local:SearchMusicModel">
+                                    <StackLayout Grid.Row="0" Orientation="Horizontal" VerticalOptions="CenterAndExpand">
+                                        <ImageButton x:Name="imbIconMusicStatusEnabled" HorizontalOptions="Start" VerticalOptions="Center" IsEnabled="{Binding IconMusicStatusEnabled}" IsVisible="{Binding IconMusicStatusVisible}" Clicked="AlbumSelection_Button_Clicked" CommandParameter="{Binding .}" Source="{Binding IconMusicStatus}"/>
+                                        <Label HorizontalOptions="Start" VerticalOptions="Center" Text="{Binding TypeIcon}" FontSize="15" MinimumWidthRequest="17" FontFamily="FontAwesomeBold" Opacity="0.5" />
+                                        <Label HorizontalOptions="FillAndExpand" VerticalOptions="Center" Text="{Binding MusicName}" TextColor="DeepPink" Margin="2, 0" FontSize="14" LineBreakMode="TailTruncation" FontAttributes="Bold" FontFamily="OpenSans-Regular.ttf#Regular 400 italic"/>
+                                    </StackLayout>
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="ViewCellAlbumPlaylist_Tapped" CommandParameter="{Binding .}"/>
+                                    </Frame.GestureRecognizers>
+                                </Frame>
+                            </ViewCell.View>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <ListView x:Name="lstvSavedMusicPlaylist" IsVisible="false" ItemsSource="{Binding SavedMusicPlaylist}" BackgroundColor="#F7F9FC" HorizontalOptions="StartAndExpand" SeparatorVisibility="None" SelectionMode="None" CachingStrategy="RetainElement">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <ViewCell>
+                            <ViewCell.View>
+                                <Frame CornerRadius="10" HorizontalOptions="FillAndExpand" Padding="5" Margin="1, 1" BackgroundColor="#eff1f7" x:DataType="local:SearchMusicModel">
+                                    <Grid>
+                                        <StackLayout Grid.Row="0" Orientation="Horizontal" VerticalOptions="CenterAndExpand">
+                                            <ActivityIndicator HorizontalOptions="Start" IsRunning="{Binding IsBufferingMusic}" IsVisible="{Binding IsBufferingMusic}" Margin="-8, 0"/>
+                                            <Label HorizontalOptions="Center" VerticalOptions="Center" Text="{Binding TypeIcon}" FontSize="15" MinimumWidthRequest="17" FontFamily="FontAwesomeBold" Opacity="0.5" />
+                                            <Label HorizontalOptions="FillAndExpand" VerticalOptions="Center" Text="{Binding MusicName}" TextColor="DeepPink" Margin="2, 0" FontSize="14" LineBreakMode="TailTruncation" FontFamily="OpenSans-Regular.ttf#Regular 400 italic"/>
+                                            <ImageButton x:Name="imgbDownloadMusicVisible" HorizontalOptions="End" VerticalOptions="Center" IsEnabled="{Binding IconMusicDownloadVisible}" IsVisible="{Binding IconMusicDownloadVisible}" WidthRequest="33" Source="{StaticResource icon_arrow_right_white_smoke}" Clicked="ImgbDownloadMusicVisible_Clicked" CommandParameter="{Binding .}"/>
+                                        </StackLayout>
+                                    </Grid>
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="ViewCellMusicPlaylist_Tapped" CommandParameter="{Binding .}"/>
+                                    </Frame.GestureRecognizers>
+                                </Frame>
+                            </ViewCell.View>
+                        </ViewCell>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <StackLayout Grid.Row="3" VerticalOptions="EndAndExpand">
+                <Grid RowSpacing="0" Margin="0,5,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <controls:MTAdView x:Name="myAds" Grid.Row="0"/>
+                    <uc_local:MusicBottomPlayerControl x:Name="ucPlayerControl" Grid.Row="1"/>
+                </Grid>
+            </StackLayout>
+        </Grid>
+    </ContentPage.Content>-->
+</TabbedPage>

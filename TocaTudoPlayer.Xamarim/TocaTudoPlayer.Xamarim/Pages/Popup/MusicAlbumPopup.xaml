@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xct:Popup  xmlns:xct="http://xamarin.com/schemas/2020/toolkit" 
+            xmlns="http://xamarin.com/schemas/2014/forms"
+            Size="350, 70"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" 
+            xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim" 
+            x:Class="TocaTudoPlayer.Xamarim.Pages.MusicAlbumPopup"
+            VerticalOptions="CenterAndExpand"
+            HorizontalOptions="CenterAndExpand"
+            x:Name="musicPopup">
+    <Frame CornerRadius="10" Padding="5" x:DataType="local:SearchMusicModel">
+        <Grid RowSpacing="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="20"/>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="40"/>
+            </Grid.RowDefinitions>
+            <Label Text="{Binding MusicName}" Grid.Row="0" FontAttributes="Bold" TextColor="Black" LineBreakMode="TailTruncation"/>
+            <Grid Grid.Row="1" ColumnSpacing="1" IsVisible="{Binding NormalModeIsVisible}">
+                <StackLayout Orientation="Horizontal" Spacing="2">
+                    <Button Grid.Row="0" Grid.Column="0" Text="Álbum" ContentLayout="Left,10" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistAddAlbum_Clicked" FontAttributes="{Binding MusicDetailsAddAlbumFontAttr}" ImageSource="{Binding MusicDetailsAddAlbumIcon}" CommandParameter="{Binding .}"/>
+                    <Button Grid.Row="0" Grid.Column="1" Text="Download" ContentLayout="Left,10" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistDownloadMusicForm_Clicked" CommandParameter="{Binding .}" IsEnabled="{Binding Download.IsDownloadEventEnabled}">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}" Size="18" Color="DarkOrange"/>
+                        </Button.ImageSource>
+                    </Button>
+                </StackLayout>
+            </Grid>
+            <Grid Grid.Row="1" ColumnSpacing="1" IsVisible="{Binding AlbumModeIsVisible}">
+                <StackLayout Orientation="Horizontal" Spacing="2">
+                    <Label Text="{x:Static local:Icon.FileImageO}" TextColor="Green" VerticalTextAlignment="Center" FontAttributes="Bold" FontFamily="FontAwesomeBold"  FontSize="18" LineBreakMode="TailTruncation"/>
+                    <Label Text="Salvo em Álbum! - " TextColor="Black" VerticalTextAlignment="Center" FontAttributes="Bold" FontSize="12" LineBreakMode="TailTruncation"/>
+                    <Label Text="{Binding AlbumMusicSavedSelected.Value}" TextColor="Black" VerticalTextAlignment="Center" FontSize="13" LineBreakMode="TailTruncation"/>
+                    <Button Text="Excluir" VerticalOptions="CenterAndExpand" HorizontalOptions="EndAndExpand" Clicked="ViewCellPlusMusicPlaylistDeleteAlbumName_Clicked" CommandParameter="{Binding .}">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Trash}" Size="18" Color="Red"/>
+                        </Button.ImageSource>
+                    </Button>
+                </StackLayout>
+            </Grid>
+            <Grid Grid.Row="2" IsVisible="{Binding AlbumModeDetailsIsVisible}" VerticalOptions="Start" HeightRequest="40">
+                <StackLayout Orientation="Horizontal" Spacing="2">
+                    <Button Text="Editar" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistEditAlbum_Clicked" CommandParameter="{Binding .}">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PencilSquareO}" Size="18" Color="Black"/>
+                        </Button.ImageSource>
+                    </Button>
+                    <Button Text="Download" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistDownloadMusicForm_Clicked" CommandParameter="{Binding .}" IsEnabled="{Binding Download.IsDownloadEventEnabled}">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}" Size="22" Color="DarkOrange"/>
+                        </Button.ImageSource>
+                    </Button>
+                </StackLayout>
+            </Grid>
+            <Grid Grid.Row="2" IsVisible="{Binding ModelNewAlbumIsVisible}" VerticalOptions="EndAndExpand">
+                <StackLayout Orientation="Horizontal">
+                    <Entry x:Name="txtAlbumNameNovo" Placeholder="Nome Álbum" VerticalOptions="Fill" HorizontalOptions="FillAndExpand"/>
+                    <ImageButton HorizontalOptions="End" VerticalOptions="Center" HeightRequest="35" Clicked="ViewCellPlusMusicPlaylistNewAlbumName_Clicked" CommandParameter="{Binding .}">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PlusCircle}" Size="40" Color="Black"/>
+                        </ImageButton.Source>
+                    </ImageButton>
+                </StackLayout>
+            </Grid>
+            <Grid Grid.Row="2" IsVisible="{Binding MusicDetailsFormAlbumIsVisible}" HeightRequest="40" VerticalOptions="EndAndExpand">
+                <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicDetailsSelectAlbumIsVisible}" Spacing="2">
+                    <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.CommonMusicPageViewModel.AlbumMusicSavedSelectCollection, Source={x:Reference musicPopup}}"/>
+                    <Button Text="Salvar" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistUpdateAlbumName_Clicked" CommandParameter="{Binding .}"/>
+                    <Button Text="Álbum" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistAddAlbumName_Clicked" CommandParameter="{Binding .}">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Plus}" Size="15" Color="Black"/>
+                        </Button.ImageSource>
+                    </Button>
+                </StackLayout>
+                <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicDetailsAddAlbumIsVisible}" VerticalOptions="EndAndExpand">
+                    <Entry x:Name="txtAlbumName" Placeholder="Nome Álbum" HorizontalOptions="FillAndExpand"/>
+                    <ImageButton HorizontalOptions="End" HeightRequest="35"  Clicked="ViewCellPlusMusicPlaylistNewAlbumName_Clicked" CommandParameter="{Binding .}">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PlusCircle}" Size="40" Color="Black"/>
+                        </ImageButton.Source>
+                    </ImageButton>
+                    <ImageButton HorizontalOptions="End" VerticalOptions="Center" HeightRequest="35" CornerRadius="100" Clicked="ViewCellPlusMusicPlaylistSelectAlbumBack_Clicked" CommandParameter="{Binding .}" BackgroundColor="Transparent">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Undo}" Size="40" Color="Black"/>
+                        </ImageButton.Source>
+                    </ImageButton>
+                </StackLayout>
+            </Grid>
+            <Grid x:Name="grdDownload" Grid.Row="2" IsVisible="{Binding MusicDetailsFormDownloadIsVisible}" ColumnSpacing="2" HeightRequest="40" VerticalOptions="CenterAndExpand">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Text="Iniciar"  HorizontalOptions="Start" Grid.Row="0" Grid.Column="0" CommandParameter="{Binding .}" IsEnabled="{Binding Download.IsDownloadEventEnabled}" Clicked="ViewCellPlusMusicPlaylistDownloadMusic_Clicked"/>
+                <Grid Grid.Column="1" VerticalOptions="CenterAndExpand">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="2"/>
+                    </Grid.RowDefinitions>
+                    <Label Text="{Binding Download.PercentDesc}" Grid.Row="0"/>
+                    <ProgressBar Grid.Row="1" HorizontalOptions="FillAndExpand" VerticalOptions="CenterAndExpand" Progress="{Binding Download.Progress}"/>
+                </Grid>
+            </Grid>
+            <Grid Grid.Row="3" IsVisible="{Binding MusicAlbumEditFormIsVisible}" VerticalOptions="StartAndExpand" HeightRequest="40">
+                <StackLayout Orientation="Horizontal" Spacing="2" HeightRequest="40">
+                    <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.AlbumMusicSavedSelectCollection, Source={x:Reference musicPopup}}"/>
+                    <Button Text="Salvar" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistUpdateAlbumName_Clicked" CommandParameter="{Binding .}"/>
+                </StackLayout>
+            </Grid>
+        </Grid>
+    </Frame>
+</xct:Popup>

@@ -1,0 +1,207 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sh="http://sharpnado.com"
+             xmlns:xtc="http://xamarin.com/schemas/2020/toolkit"
+             xmlns:controls="clr-namespace:MarcTron.Plugin.Controls;assembly=Plugin.MtAdmob"
+             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+             xmlns:uc_local="clr-namespace:TocaTudoPlayer.Xamarim"
+             x:Class="TocaTudoPlayer.Xamarim.Pages.SavedAlbum"
+             NavigationPage.HasNavigationBar="False"
+             x:DataType="local:IAlbumSavedPageViewModel">
+    <ContentPage.Content>
+        <Grid RowSpacing="0">
+            <Grid.Background>
+                <LinearGradientBrush>
+                    <GradientStop Color="#E7EDF8" Offset="0" />
+                    <GradientStop Color="#E3E7EE" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <uc_local:InternetConnControl/>
+            <Grid Grid.Row="0" RowSpacing="0" ColumnSpacing="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="{Binding CommonPageViewModel.AlbumPlayingGridSize}"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" Margin="0,0,5,0">
+                    <Entry x:Name="txtSearchName" Placeholder="álbum" HorizontalOptions="FillAndExpand"/>
+                    <Button x:Name="txtSearchNameClear" IsVisible="false" HeightRequest="15" WidthRequest="15" VerticalOptions="Center" HorizontalOptions="End" Margin="0,0,7,0" Clicked="TxtSearchNameClear_Clicked">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.TimesCircle}" Size="18" Color="#5C5C5C"/>
+                        </Button.ImageSource>
+                    </Button>
+                </Grid>
+                <Grid Grid.Column="2" HorizontalOptions="FillAndExpand" RowSpacing="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="17"/>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="15"/>
+                    </Grid.RowDefinitions>
+                    <Label Text="Álbum tocando!" Grid.Row="0" Padding="2, 0" FontSize="12" TextColor="White" FontAttributes="Bold">
+                        <Label.Background>
+                            <LinearGradientBrush>
+                                <GradientStop Color="#D4420C" Offset="0.5" />
+                                <GradientStop Color="#F3A283" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Label.Background>
+                    </Label>
+                    <Image Source="{Binding CommonPageViewModel.AlbumImage}" Aspect="AspectFill" Grid.Row="1"/>
+                    <sh:Shadows CornerRadius="20" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=White}" Grid.ColumnSpan="1" Grid.Row="1">
+                        <Button WidthRequest="25" HeightRequest="25" CornerRadius="20" Margin="4" HorizontalOptions="EndAndExpand" VerticalOptions="CenterAndExpand" Clicked="AlbumBackButton_Clicked" CommandParameter="{Binding .}" >
+                            <Button.Background>
+                                <LinearGradientBrush>
+                                    <GradientStop Color="#D4420C" Offset="0.5" />
+                                    <GradientStop Color="#F3A283" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Button.Background>
+                            <Button.ImageSource>
+                                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}" Size="15" Color="Black"/>
+                            </Button.ImageSource>
+                        </Button>
+                    </sh:Shadows>
+                    <Label Text="{Binding CommonPageViewModel.AlbumName}" FontAttributes="Bold" Grid.Row="2" Margin="0,-2" FontSize="13" LineBreakMode="TailTruncation"/>
+                </Grid>
+            </Grid>
+            <ActivityIndicator x:Name="actInd" Grid.RowSpan="2" IsRunning="{Binding IsSearching}" IsVisible="{Binding IsSearching}" VerticalOptions="CenterAndExpand"/>
+            <Grid x:Name="gAlbumPlaylist" Margin="7,0" Grid.Row="1" RowSpacing="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="{Binding AlbumSavedPlayedHistoryViewModel.PlayedHistoryCollectionSize}"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Label TextColor="Black" Grid.Row="0" Opacity="0.5" Text="Álbuns Recentes" IsVisible="{Binding AlbumSavedPlayedHistoryViewModel.PlayedHistoryIsVisible}" FontSize="13"/>
+                <CollectionView ItemsSource="{Binding AlbumSavedPlayedHistoryViewModel.PlayedHistory}" IsVisible="{Binding AlbumSavedPlayedHistoryViewModel.PlayedHistoryIsVisible}" Grid.Row="1" VerticalOptions="CenterAndExpand" HorizontalOptions="CenterAndExpand">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout Orientation="Horizontal" Span="{Binding AlbumSavedPlayedHistoryViewModel.PlayedHistoryCollectionTotalItens}" HorizontalItemSpacing="2" VerticalItemSpacing="2"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid BackgroundColor="#F7F9FC" RowSpacing="0" Padding="2,2" x:DataType="local:UserAlbumPlayedHistory">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="90"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.Background>
+                                    <LinearGradientBrush BindingContext="{Binding Source={RelativeSource AncestorType={x:Type Grid}}, Path=BindingContext}" StartPoint="0,1">
+                                        <GradientStop Color="{Binding MusicSelectedColorPrimary}" Offset="0.5" />
+                                        <GradientStop Color="{Binding MusicSelectedColorSecondary}" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Grid.Background>
+                                <Image Source="{Binding ImgAlbum}" Grid.Row="0" Grid.ColumnSpan="2" Aspect="AspectFill" VerticalOptions="FillAndExpand"/>
+                                <Label Text="{Binding AlbumName}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"  FontSize="13" TextColor="{Binding MusicTextColor}" FontAttributes="{Binding MusicTextFontAttr}"  VerticalOptions="FillAndExpand" HorizontalOptions="FillAndExpand" LineBreakMode="TailTruncation"/>
+                                <sh:Shadows Grid.Column="1" CornerRadius="20" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=White}">
+                                    <Button Grid.Column="1" WidthRequest="30" HeightRequest="30" CornerRadius="20" Margin="4" HorizontalOptions="EndAndExpand" VerticalOptions="CenterAndExpand" Command="{Binding Path=BindingContext.AlbumHistoryFormCommand, Source={x:Reference gAlbumPlaylist}}" CommandParameter="{Binding .}">
+                                        <Button.Background>
+                                            <LinearGradientBrush>
+                                                <GradientStop Color="#D4420C" Offset="0.5" />
+                                                <GradientStop Color="#F3A283" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Button.Background>
+                                        <Button.ImageSource>
+                                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}" Size="15" Color="Black"/>
+                                        </Button.ImageSource>
+                                    </Button>
+                                </sh:Shadows>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                <Frame CornerRadius="10" Grid.Row="2" Padding="5" IsVisible="{Binding AlbumSavedPlayedHistoryViewModel.RecentlyPlayedFormIsVisible}">
+                    <Frame.Background>
+                        <LinearGradientBrush BindingContext="{Binding Source={RelativeSource AncestorType={x:Type Frame}}, Path=BindingContext}" StartPoint="0,1">
+                            <GradientStop Color="#D4420C" Offset="0.5" />
+                            <GradientStop Color="#F3A283" Offset="1.0" />
+                        </LinearGradientBrush>
+                    </Frame.Background>
+                    <Grid RowSpacing="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0" VerticalOptions="CenterAndExpand" Text="{Binding AlbumSavedPlayedHistoryViewModel.RecentlyPlayedSelected.AlbumName}" TextColor="White" FontAttributes="Bold" FontSize="14" LineBreakMode="TailTruncation"/>
+                        <Button Grid.Column="1" WidthRequest="30" HeightRequest="30" CornerRadius="20"  VerticalOptions="Center" Clicked="AlbumHistorySelectionButton_Clicked" CommandParameter="{Binding AlbumSavedPlayedHistoryViewModel.RecentlyPlayedSelected}" xtc:ShadowEffect.Color="Red" xtc:ShadowEffect.OffsetX="10" xtc:ShadowEffect.OffsetY="10">
+                            <Button.Background>
+                                <LinearGradientBrush>
+                                    <GradientStop Color="#b8c6db" Offset="0" />
+                                    <GradientStop Color="#f5f7fa" Offset="1" />
+                                </LinearGradientBrush>
+                            </Button.Background>
+                            <Button.ImageSource>
+                                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}" Size="15" Color="Black"/>
+                            </Button.ImageSource>
+                        </Button>
+                    </Grid>
+                </Frame>
+                <Label x:Name="albumPlaylistHead" Grid.Row="3" TextColor="Black" IsVisible="{Binding AlbumSavedPlayedHistoryViewModel.RecentlyPlayedFormIsVisible}" Opacity="0.5" Text="Tocados Recentemente"/>
+                <CollectionView Grid.Row="4" VerticalOptions="CenterAndExpand" ItemsSource="{Binding SavedAlbumPlaylist}" SelectionMode="Single">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout Orientation="Vertical" ItemSpacing="1"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.EmptyView>
+                        <StackLayout HorizontalOptions="CenterAndExpand" VerticalOptions="CenterAndExpand">
+                            <Label Text="Não há álbuns salvos!" FontSize="14" HorizontalTextAlignment="Center" />
+                        </StackLayout>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid HorizontalOptions="CenterAndExpand" HeightRequest="40" VerticalOptions="CenterAndExpand" BackgroundColor="#F7F9FC" Padding="10,10" x:DataType="local:SearchMusicModel">
+                                <Grid.Background>
+                                    <LinearGradientBrush BindingContext="{Binding Source={RelativeSource AncestorType={x:Type Grid}}, Path=BindingContext}" StartPoint="0,1">
+                                        <GradientStop Color="{Binding MusicSelectedColorPrimary}" Offset="0.5" />
+                                        <GradientStop Color="{Binding MusicSelectedColorSecondary}" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Grid.Background>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="25"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="40"/>
+                                </Grid.ColumnDefinitions>
+                                <sh:Shadows CornerRadius="20"  Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=Silver}">
+                                    <Label VerticalOptions="Fill" WidthRequest="70" Text="{x:Static local:Icon.FileImageO}" VerticalTextAlignment="Center" TextColor="{Binding TextColorMusic}" FontSize="30" FontFamily="FontAwesomeBold" Opacity="0.8" />
+                                </sh:Shadows>
+                                <Label HorizontalOptions="FillAndExpand" VerticalOptions="Center" Grid.Column="1" Text="{Binding MusicName}" VerticalTextAlignment="Center" TextColor="{Binding TextColorMusic}" FontAttributes="{Binding MusicFontAttr}" FontSize="14" LineBreakMode="TailTruncation"/>
+                                <sh:Shadows Grid.Column="2" CornerRadius="20" IsVisible="{Binding IsSelected}" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=Silver}">
+                                    <Button Grid.Column="2" CornerRadius="20" Clicked="AlbumSelectionButton_Clicked" CommandParameter="{Binding .}">
+                                        <Button.Background>
+                                            <LinearGradientBrush>
+                                                <GradientStop Color="#E3E7EE" Offset="0.5" />
+                                                <GradientStop Color="#FBFBFB" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Button.Background>
+                                        <Button.ImageSource>
+                                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}" Size="15" Color="Black"/>
+                                        </Button.ImageSource>
+                                    </Button>
+                                </sh:Shadows>
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="ViewCellAlbumPlaylist_Tapped" CommandParameter="{Binding .}"/>
+                                </Grid.GestureRecognizers>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+            <StackLayout Grid.Row="2" VerticalOptions="EndAndExpand">
+                <Grid RowSpacing="0" Margin="0,5,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <controls:MTAdView x:Name="myAds" Grid.Row="0"/>
+                    <uc_local:MusicBottomPlayerControl x:Name="ucPlayerControl" Grid.Row="1"/>
+                </Grid>
+            </StackLayout>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

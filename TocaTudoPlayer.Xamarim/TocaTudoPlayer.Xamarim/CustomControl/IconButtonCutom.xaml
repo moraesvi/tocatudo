@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ContentView xmlns="http://xamarin.com/schemas/2014/forms" 
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="TocaTudoPlayer.Xamarim.IconButtonCutom">
+  <ContentView.Content>
+        <Frame CornerRadius="5" x:Name="myFrame"  HorizontalOptions="Start" VerticalOptions="Start" Margin="2" HasShadow="True" Padding="10" >
+            <StackLayout Orientation="Horizontal" BackgroundColor="Transparent" x:Name="stack">
+                <Image x:Name="btnIcon" HeightRequest="20" WidthRequest="20" HorizontalOptions="Start" BackgroundColor="Transparent"/>
+                <Label x:Name="btnText" HorizontalOptions="Start" TextColor="#000" BackgroundColor="Transparent" FontSize="16"/>
+            </StackLayout>
+        </Frame>
+    </ContentView.Content>
+</ContentView>

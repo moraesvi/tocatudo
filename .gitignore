@@ -1,0 +1,19 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/ConsoleApp1/bin/Debug/netcoreapp3.1
+/ConsoleApp1/obj
+/.vs
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim/bin
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim/obj/Debug
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim/obj
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.Android/bin
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.Android/obj
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.iOS/bin/iPhone/Debug
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.iOS/obj
+/ConsoleApp1/bin/Release/netcoreapp3.1/runtimes
+/ConsoleApp1/bin/Release/netcoreapp3.1
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.iOS/bin/iPhone/Release
+/ConsoleApp1/bin/Debug/net5.0
+/TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.iOS/bin/iPhoneSimulator

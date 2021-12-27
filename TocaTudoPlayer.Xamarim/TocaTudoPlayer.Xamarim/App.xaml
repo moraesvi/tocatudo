@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Application xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:MarcTron.Plugin.Controls;assembly=Plugin.MtAdmob"
+             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+             mc:Ignorable="d"
+             x:Class="TocaTudoPlayer.Xamarim.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_music" Color="White" Size="20" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Music}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_add" Color="White" Size="20" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PlusCircle}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_album" Color="White" Size="20" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.FileImageO}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_arrow_down" Color="White" Size="20" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_play" Color="Black" Size="40" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PlayCircle}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_arrow_right" Color="White" Size="20" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}"/>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_arrow_right_white_smoke" Color="Coral" Size="35" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowCircleDown}">
+            </FontImageSource>
+        </ResourceDictionary>
+        <ResourceDictionary>
+            <FontImageSource x:Key="icon_arrow_right_black" Color="White" Size="25" FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}"/>
+        </ResourceDictionary>
+        <ControlTemplate x:Key="MainPageTemplate">
+            <Grid VerticalOptions="FillAndExpand" HorizontalOptions="FillAndExpand" ColumnSpacing="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="35" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Padding="5" VerticalOptions="CenterAndExpand">
+                    <Image Source="back" BackgroundColor="Transparent" VerticalOptions="Center" HorizontalOptions="Start" Grid.Column="0" Grid.Row="0" />
+                    <Label Text="TocaTudo" VerticalOptions="Center" HorizontalOptions="Center" Grid.Column="0" Grid.Row="0" />
+                    <Image Source="download" BackgroundColor="Transparent" VerticalOptions="Center" HorizontalOptions="End" Grid.Column="0" Grid.Row="0" />
+                </Grid>
+                <ContentPresenter VerticalOptions="FillAndExpand" HorizontalOptions="FillAndExpand" Grid.Column="0" Grid.Row="1"/>
+            </Grid>
+        </ControlTemplate>
+    </Application.Resources>
+</Application>

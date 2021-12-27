@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:sh="http://sharpnado.com"
+             xmlns:xtc="http://xamarin.com/schemas/2020/toolkit"
+             xmlns:controls="clr-namespace:MarcTron.Plugin.Controls;assembly=Plugin.MtAdmob"
+             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+             xmlns:uc_local="clr-namespace:TocaTudoPlayer.Xamarim"
+             x:Class="TocaTudoPlayer.Xamarim.Pages.SavedMusic"
+             NavigationPage.HasNavigationBar="False"
+             x:DataType="local:IMusicSavedPageViewModel"
+             Title="TocaTudo - Música">
+    <ContentPage.Content>
+        <Grid RowSpacing="0">
+            <Grid.Background>
+                <LinearGradientBrush>
+                    <GradientStop Color="#E7EDF8" Offset="0" />
+                    <GradientStop Color="#E3E7EE" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <uc_local:InternetConnControl/>
+            <ActivityIndicator x:Name="actInd" Grid.RowSpan="3" IsRunning="{Binding IsSearching}" IsVisible="{Binding IsSearching}" HorizontalOptions="CenterAndExpand" VerticalOptions="CenterAndExpand"/>
+            <Grid Grid.Row="0" RowSpacing="0" ColumnSpacing="0" Margin="2,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="{Binding CommonPageViewModel.AlbumPlayingGridSize}"/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0">
+                    <Entry x:Name="txtSearchName" Placeholder="música" HorizontalOptions="FillAndExpand"/>
+                    <Button x:Name="txtSearchNameClear" IsVisible="false" HeightRequest="15" WidthRequest="15" VerticalOptions="Center" HorizontalOptions="End" Margin="0,0,7,0" Clicked="TxtSearchNameClear_Clicked">
+                        <Button.ImageSource>
+                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.TimesCircle}" Size="18" Color="#5C5C5C"/>
+                        </Button.ImageSource>
+                    </Button>
+                </Grid>
+            </Grid>
+            <Label Grid.Row="1" TextColor="Black" Text="Álbum" Opacity="0.5" Margin="2,0" FontSize="13"/>
+            <Picker x:Name="pkAlbumMusicSavedSelect" Grid.Row="2" ItemsSource="{Binding CommonMusicPageViewModel.AlbumMusicSavedSelectCollection}" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding .}" Title="Selecione" FontSize="13" Margin="2,-12,0,0" SelectedIndexChanged="AlbumMusicSavedSelect_Clicked"/>
+            <CollectionView x:Name="musicPlaylist" Grid.Row="3" ItemsSource="{Binding SavedMusicPlaylist}" SelectionMode="None" VerticalOptions="FillAndExpand" HorizontalOptions="FillAndExpand" Margin="2,0">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="1"/>
+                </CollectionView.ItemsLayout>
+                <CollectionView.EmptyView>
+                    <StackLayout HorizontalOptions="CenterAndExpand" VerticalOptions="CenterAndExpand">
+                        <Label Text="Não há músicas salvas!" FontSize="14" HorizontalTextAlignment="Center" />
+                    </StackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid RowSpacing="1" Padding="5" BackgroundColor="#F7F9FC" x:DataType="local:SearchMusicModel">
+                            <Grid.Background>
+                                <LinearGradientBrush BindingContext="{Binding Source={RelativeSource AncestorType={x:Type Grid}}, Path=BindingContext}" StartPoint="0,1">
+                                    <GradientStop Color="{Binding MusicSelectedColorPrimary}" Offset="0.5" />
+                                    <GradientStop Color="{Binding MusicSelectedColorSecondary}" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Grid.Background>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="35"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="30"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="32"/>
+                                </Grid.ColumnDefinitions>
+                                <sh:Shadows Grid.Column="0" CornerRadius="20" IsVisible="{Binding IsLoadded}" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=Silver}">
+                                    <Frame Padding="0" HeightRequest="30" CornerRadius="15" VerticalOptions="Center" xtc:ShadowEffect.Color="#E3E7EE" xtc:ShadowEffect.OffsetX="0" xtc:ShadowEffect.OffsetY="0">
+                                        <Frame.Background>
+                                            <LinearGradientBrush>
+                                                <GradientStop Color="#E3E7EE" Offset="0" />
+                                                <GradientStop Color="#FBFBFB" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Frame.Background>
+                                        <Image VerticalOptions="Center" BackgroundColor="Transparent" Source="{Binding ImgMusicPlayingIcon}"/>
+                                    </Frame>
+                                </sh:Shadows>
+                                <ActivityIndicator Grid.Column="0" x:Name="searchingMusic" VerticalOptions="Center" HorizontalOptions="Center" Color="White" IsRunning="{Binding IsBufferingMusic}" IsVisible="{Binding IsBufferingMusic}"/>
+                                <Label Grid.Column="1" HorizontalOptions="Fill" VerticalOptions="CenterAndExpand" Text="{Binding MusicName}" TextColor="{Binding TextColorMusic}" FontAttributes="{Binding MusicFontAttr}" IsVisible="{Binding NormalModeIsVisible}" FontSize="14" LineBreakMode="TailTruncation"/>
+                                <StackLayout Orientation="Horizontal" Grid.Column="1" Spacing="2" HorizontalOptions="StartAndExpand" VerticalOptions="StartAndExpand" IsVisible="{Binding AlbumModeIsVisible}">
+                                    <Label Text="{x:Static local:Icon.CheckCircle}" TextColor="Green" FontAttributes="Bold" FontFamily="FontAwesomeBold" FontSize="12" LineBreakMode="TailTruncation"/>
+                                    <Label Text="Álbum - " TextColor="Black" FontAttributes="Bold" FontSize="12"/>
+                                    <Label Text="{Binding AlbumMusicSavedSelected.Value}" FontAttributes="Bold" FontSize="13"/>
+                                </StackLayout>
+                                <Label Grid.Column="1" HorizontalOptions="Fill" VerticalOptions="EndAndExpand" Text="{Binding MusicName}" TextColor="{Binding TextColorMusic}" FontAttributes="{Binding MusicFontAttr}" FontSize="14" LineBreakMode="TailTruncation" IsVisible="{Binding AlbumModeIsVisible}"/>
+                                <StackLayout Orientation="Horizontal" Grid.Column="1" Spacing="2" Padding="0,-5" HorizontalOptions="EndAndExpand" VerticalOptions="StartAndExpand">
+                                    <Image>
+                                        <Image.Source>
+                                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowCircleDown}" Size="12" Color="{Binding TextColorMusic}"/>
+                                        </Image.Source>
+                                    </Image>
+                                    <Label Text="Salvo!" TextColor="{Binding TextColorMusic}" FontSize="11"/>
+                                </StackLayout>
+                                <sh:Shadows Grid.Column="3" CornerRadius="20" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=Silver}">
+                                    <Button HeightRequest="32" CornerRadius="20" Padding="5" VerticalOptions="CenterAndExpand" Clicked="ViewCellPlusMusicPlaylist_Clicked" CommandParameter="{Binding .}" ImageSource="{Binding MusicDetailsFormAlbumIcon}">
+                                        <Button.Background>
+                                            <LinearGradientBrush>
+                                                <GradientStop Color="#81de78" Offset="0" />
+                                                <GradientStop Color="#59b650" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Button.Background>
+                                    </Button>
+                                </sh:Shadows>
+                            </Grid>
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Path=BindingContext.SelectMusicCommand, Source={x:Reference musicPlaylist}}" CommandParameter="{Binding .}"/>
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <StackLayout Grid.Row="4" VerticalOptions="EndAndExpand">
+                <Grid RowSpacing="0" Margin="0,5,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <controls:MTAdView x:Name="myAds" Grid.Row="0"/>
+                    <uc_local:MusicBottomPlayerControl x:Name="ucPlayerControl" Grid.Row="1"/>
+                </Grid>
+            </StackLayout>
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

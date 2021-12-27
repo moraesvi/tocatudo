@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<TabbedPage xmlns="http://xamarin.com/schemas/2014/forms"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+            xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            mc:Ignorable="d"
+            x:Name="tbpMain"
+            NavigationPage.HasNavigationBar="false"
+            Title="TocaTudo"
+            x:Class="TocaTudoPlayer.Xamarim.MainPage">
+    <!--<TabbedPage.Children>
+        <NavigationPage Title="Álbum" IconImageSource="{x:StaticResource icon_album}">
+            <x:Arguments>
+                <pages:Album/>
+            </x:Arguments>
+        </NavigationPage>
+        <NavigationPage Title="Música" IconImageSource="{x:StaticResource icon_music}">
+            <x:Arguments>
+                <pages:Music/>
+            </x:Arguments>
+        </NavigationPage>
+        <NavigationPage Title="Salvos" IconImageSource="{x:StaticResource icon_arrow_down}">
+            <x:Arguments>
+                <pages:Save/>
+            </x:Arguments>
+        </NavigationPage>
+    </TabbedPage.Children>-->
+</TabbedPage>
