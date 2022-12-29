@@ -132,14 +132,14 @@ namespace TocaTudoPlayer.Xamarim
             AppConfigAdMob = new AppConfigAdMob()
             {
                 AdsActiveProdMode = false,
-                AdsAlbumBanner = "ca-app-pub-3382139004617696/7972731197",
-                AdsMusicBanner = "ca-app-pub-3382139004617696/5979573779",
-                AdsSavedMusicBanner = "ca-app-pub-3382139004617696/4250513571",
-                AdsAlbumPlayerBanner = "ca-app-pub-3382139004617696/5360415265",
-                AdsAlbumIntersticial = "ca-app-pub-3382139004617696/2108126429",
-                AdsMusicIntersticial = "ca-app-pub-3382139004617696/2937431902",
-                AdsSavedMusicIntersticial = "ca-app-pub-3382139004617696/6819184208",
-                AdsAlbumPlayerIntersticial = "ca-app-pub-3382139004617696/4485267548"
+                AdsAlbumBanner = "",
+                AdsMusicBanner = "",
+                AdsSavedMusicBanner = "",
+                AdsAlbumPlayerBanner = "",
+                AdsAlbumIntersticial = "",
+                AdsMusicIntersticial = "",
+                AdsSavedMusicIntersticial = "",
+                AdsAlbumPlayerIntersticial = ""
             };
 
 
