@@ -6,10 +6,10 @@ namespace TocaTudoPlayer.Xamarim
 {
     public class SearchDownloadMusicCommand : ICommand
     {
-        private IMusicPageViewModel _vm;
+        private MusicPageViewModel _vm;
         public event EventHandler CanExecuteChanged;
 
-        public SearchDownloadMusicCommand(IMusicPageViewModel vm)
+        public SearchDownloadMusicCommand(MusicPageViewModel vm)
         {
             _vm = vm;
         }

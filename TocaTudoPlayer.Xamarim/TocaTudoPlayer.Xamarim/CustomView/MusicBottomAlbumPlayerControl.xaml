@@ -2,15 +2,14 @@
 <StackLayout xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" 
              xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
-             xmlns:localVM="clr-namespace:TocaTudoPlayer.Xamarim.ViewModel.CustomView"
-             x:DataType="localVM:MusicBottomAlbumPlayerViewModel"
+             x:DataType="local:MusicBottomAlbumPlayerViewModel"
              x:Class="TocaTudoPlayer.Xamarim.MusicBottomAlbumPlayerControl"
              VerticalOptions="EndAndExpand" Spacing="0" BackgroundColor="#212529"
              IsVisible="{Binding BottomPlayerControlIsVisible}">
     <Grid x:Name="gridTeste" Grid.Row="0" RowSpacing="0" ColumnSpacing="3">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="45"/>
+            <RowDefinition Height="22"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>

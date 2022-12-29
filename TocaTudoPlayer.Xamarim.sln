@@ -1,15 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30320.27
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TocaTudoPlayer.Xamarim.Android", "TocaTudoPlayer.Xamarim\TocaTudoPlayer.Xamarim.Android\TocaTudoPlayer.Xamarim.Android.csproj", "{B197CE9E-BB5B-4A9A-9B05-C81FFE742723}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TocaTudoPlayer.Xamarim.iOS", "TocaTudoPlayer.Xamarim\TocaTudoPlayer.Xamarim.iOS\TocaTudoPlayer.Xamarim.iOS.csproj", "{20F859E2-D807-4488-AFBF-74C95B0B1AAF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TocaTudoPlayer.Xamarim", "TocaTudoPlayer.Xamarim\TocaTudoPlayer.Xamarim\TocaTudoPlayer.Xamarim.csproj", "{FD86E9DA-69C0-48BC-9493-F0A131B6410F}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,41 +73,11 @@ Global
 		{FD86E9DA-69C0-48BC-9493-F0A131B6410F}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
 		{FD86E9DA-69C0-48BC-9493-F0A131B6410F}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
 		{FD86E9DA-69C0-48BC-9493-F0A131B6410F}.Release|iPhoneSimulator.Deploy.0 = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|iPhone.ActiveCfg = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|iPhone.Build.0 = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|iPhoneSimulator.ActiveCfg = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Debug|iPhoneSimulator.Build.0 = Debug|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|iPhone.ActiveCfg = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|iPhone.Build.0 = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|iPhoneSimulator.ActiveCfg = Release|Any CPU
-		{B0ED910B-A65B-42AC-AC3E-8A6455DC52C5}.Release|iPhoneSimulator.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {40C97EC3-7690-47F6-96FC-7306F6A7602B}
-	EndGlobalSection
-	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 5
-		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
-		SccTeamFoundationServer = https://bomite.visualstudio.com/
-		SccLocalPath0 = .
-		SccProjectUniqueName1 = ConsoleApp1\\ConsoleApp1.csproj
-		SccProjectName1 = ConsoleApp1
-		SccLocalPath1 = ConsoleApp1
-		SccProjectUniqueName2 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim.Android\\TocaTudoPlayer.Xamarim.Android.csproj
-		SccProjectName2 = TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.Android
-		SccLocalPath2 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim.Android
-		SccProjectUniqueName3 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim.iOS\\TocaTudoPlayer.Xamarim.iOS.csproj
-		SccProjectName3 = TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim.iOS
-		SccLocalPath3 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim.iOS
-		SccProjectUniqueName4 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim.csproj
-		SccProjectName4 = TocaTudoPlayer.Xamarim/TocaTudoPlayer.Xamarim
-		SccLocalPath4 = TocaTudoPlayer.Xamarim\\TocaTudoPlayer.Xamarim
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xct:Popup xmlns:xct="http://xamarin.com/schemas/2020/toolkit" 
+           xmlns="http://xamarin.com/schemas/2014/forms"
+           xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+           xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+           xmlns:resource="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
+           Size="350, 110"
+           x:Class="TocaTudoPlayer.Xamarim.Pages.MusicAlbumSetupPopup">
+    <Grid x:Name="grdSetupPopup" RowSpacing="1" ColumnSpacing="0" Padding="5" x:DataType="local:ICommonMusicModel">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="22"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Label Text="{x:Static resource:AppResource.ConfigurationLabel}" Grid.Row="0" FontAttributes="Bold" TextColor="Black" LineBreakMode="TailTruncation"/>
+        <Grid Grid.Row="1" ColumnSpacing="2" IsVisible="{Binding IsSavedOnLocalDb}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Text="{x:Static local:Icon.ArrowCircleDown}" Grid.Column="0" TextColor="Green" VerticalTextAlignment="Center" FontAttributes="Bold" FontFamily="FontAwesomeBold"  FontSize="18" LineBreakMode="TailTruncation"/>
+            <Label Text="{Binding MusicName}" Grid.Column="1" TextColor="Black" VerticalOptions="FillAndExpand" VerticalTextAlignment="Center" FontAttributes="Bold" FontSize="12" LineBreakMode="TailTruncation"/>
+            <Button Text="{x:Static resource:AppResource.PopupMusicDelete}" Grid.Column="2" TextTransform="Lowercase" VerticalOptions="End" Padding="0" Clicked="ButtonDeleteMusic_Clicked" CommandParameter="{Binding .}"/>
+        </Grid>
+        <Grid Grid.Row="2" ColumnSpacing="2" IsVisible="{Binding MusicAlbumPopupModel.AlbumModeIsVisible}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Text="{x:Static local:Icon.FileImageO}" Grid.Column="0" TextColor="#D4420C" VerticalTextAlignment="Center" FontAttributes="Bold" FontFamily="FontAwesomeBold"  FontSize="18" LineBreakMode="TailTruncation"/>
+            <Label Text="{x:Static resource:AppResource.PopupMusicSavedInAlbum}" Grid.Column="1" TextColor="Black" VerticalTextAlignment="Center" FontAttributes="Bold" FontSize="12" LineBreakMode="TailTruncation"/>
+            <Label Text="{Binding MusicAlbumPopupModel.AlbumMusicSavedSelected.Value}" Grid.Column="2" TextColor="Black" VerticalOptions="FillAndExpand" VerticalTextAlignment="Center" FontSize="13" LineBreakMode="TailTruncation"/>
+            <Button Text="{x:Static resource:AppResource.PopupMusicDelete}" Grid.Column="3" TextTransform="Lowercase" VerticalOptions="End" Padding="0" Clicked="ButtonDeleteMusicFromAlbum_Clicked" CommandParameter="{Binding .}"/>
+        </Grid>
+        <Grid Grid.Row="2" ColumnSpacing="2" IsVisible="{Binding MusicAlbumPopupModel.SavedAlbumModeIsVisible}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Label Text="{x:Static local:Icon.FileImageO}" Grid.Column="0" TextColor="#D4420C" VerticalTextAlignment="Center" FontAttributes="Bold" FontFamily="FontAwesomeBold"  FontSize="18" LineBreakMode="TailTruncation"/>
+            <Label Text="{x:Static resource:AppResource.PopupMusicSavedInAlbum}" Grid.Column="1" TextColor="Black" VerticalTextAlignment="Center" FontAttributes="Bold" FontSize="12" LineBreakMode="TailTruncation"/>
+            <Label Text="{Binding MusicAlbumPopupModel.AlbumMusicSavedSelected.Value}" Grid.Column="2" TextColor="Black" VerticalOptions="FillAndExpand" VerticalTextAlignment="Center" FontSize="13" LineBreakMode="TailTruncation"/>
+            <Button Text="{x:Static resource:AppResource.PopupMusicDelete}" Grid.Column="3" TextTransform="Lowercase" VerticalOptions="End" Padding="0" Clicked="ButtonDeleteMusicFromAlbum_Clicked" CommandParameter="{Binding .}"/>
+        </Grid>
+    </Grid>
+</xct:Popup>

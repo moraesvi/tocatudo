@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xct:Popup x:Class="TocaTudoPlayer.Xamarim.LoadingControlPopup"
+           xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+           xmlns:xct="http://xamarin.com/schemas/2020/toolkit"
+           xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+           xmlns="http://xamarin.com/schemas/2014/forms"
+           Size="160, 130"
+           x:DataType="local:LoadingControlPopup">
+    <StackLayout Padding="30" BackgroundColor="{Binding StackLayoutBackgroundColor}" HorizontalOptions="Center" VerticalOptions="Center">
+        <ActivityIndicator IsRunning="True" Color="{Binding ActivityIndicatorColor}" />
+        <Label FontAttributes="Bold" FontSize="16" Text="{Binding LabelText}" TextColor="{Binding LabelColor}" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
+    </StackLayout>
+</xct:Popup >

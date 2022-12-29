@@ -1,11 +1,12 @@
 ﻿using dotMorten.Xamarin.Forms;
 using MarcTron.Plugin;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Unity;
+//using Unity;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
@@ -16,49 +17,17 @@ namespace TocaTudoPlayer.Xamarim.Pages
     {
         private Grid _lastGridAlbumSelected;
         private SearchMusicModel _searchAlbumLastSelected;
-        private readonly IUnityContainer _unityContainer;
-        private readonly IAlbumSavedPageViewModel _vm;
-        private Action _audioPlayerPlay;
+        private readonly AlbumSavedPageViewModel _vm;
         private bool _formLoaded;
         private bool _formIsVisible;
         private bool _showInterstitialOnAppearing;
-        public SavedAlbum(IUnityContainer unityContainer)
+        public SavedAlbum()
         {
-            _unityContainer = unityContainer;
-            _vm = unityContainer.Resolve<IAlbumSavedPageViewModel>();
+            _vm = App.Services.GetRequiredService<AlbumSavedPageViewModel>();
 
             BindingContext = _vm;
 
-            _vm.AppErrorEvent += ViewModel_AppErrorEvent;
-
             InitializeComponent();
-
-            ucPlayerControl.BindingContext = unityContainer.Resolve<IMusicBottomPlayerViewModel>();
-            ucPlayerControl.ViewModel = unityContainer.Resolve<IMusicBottomPlayerViewModel>();
-        }
-        private void TapGestureRecognizer_Tapped(object sender, EventArgs e)
-        {
-
-        }
-        private void ImageButton_Clicked(object sender, EventArgs e)
-        {
-
-        }
-        private void FrmDownloadMusic_Tapped(object sender, EventArgs e)
-        {
-
-        }
-        private async Task<bool> CheckAndRequestLocalStoragePermission()
-        {
-            return false;
-        }
-        private void BbiShowDownload_Clicked(object sender, EventArgs e)
-        {
-
-        }
-        private void ViewModel_AppErrorEvent(int level, string msg)
-        {
-
         }
         private async void AlbumSelectionButton_Clicked(object sender, EventArgs e)
         {
@@ -70,18 +39,10 @@ namespace TocaTudoPlayer.Xamarim.Pages
             HistoryAlbumModel playlistItem = (HistoryAlbumModel)((Button)sender).CommandParameter;
             await AlbumSelectedPlay(playlistItem);
         }
-        private async void AlbumBackButton_Clicked(object sender, EventArgs e)
-        {
-            //await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedMusic);
-        }
-        private void SearchMusictActionButton_Clicked(object sender, EventArgs e)
-        {
-
-        }
         private void BtnSearch_Clicked(object sender, EventArgs e)
         {
-            albumPlaylistHead.Text = Regex.Replace(txtSearchName.Text, @"(^\w)|(\s\w)", m => m.Value.ToUpper());
-            ((IAlbumPageViewModel)BindingContext).SearchAlbumCommand.Execute(null);
+            //albumPlaylistHead.Text = Regex.Replace(txtSearchName.Text, @"(^\w)|(\s\w)", m => m.Value.ToUpper());
+            //((AlbumPageViewModel)BindingContext).SearchAlbumCommand.Execute(null);
         }
         private void ViewCellAlbumPlaylist_Tapped(object sender, EventArgs e)
         {
@@ -107,7 +68,7 @@ namespace TocaTudoPlayer.Xamarim.Pages
         }
         private void TxtSearchNameClear_Clicked(object sender, EventArgs e)
         {
-            txtSearchName.Text = string.Empty;
+            //txtSearchName.Text = string.Empty;
         }
         private async Task AlbumSelectedPlay(SearchMusicModel playlistItem)
         {
@@ -115,9 +76,9 @@ namespace TocaTudoPlayer.Xamarim.Pages
 
             if (navigateTo)
             {
-                //_vm.CommonPageViewModel.SelectedMusic = new NavigationPage(new AlbumPlayer(_unityContainer, new ApiSearchMusicModel(playlistItem)));       
+                _vm.CommonPageViewModel.SelectedAlbum = new AlbumPlayer();
 
-                //await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedMusic);
+                await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedAlbum);
             }
         }
         private async Task AlbumSelectedPlay(HistoryAlbumModel playlistItem)
@@ -126,24 +87,20 @@ namespace TocaTudoPlayer.Xamarim.Pages
 
             if (navigateTo)
             {
-                //_vm.CommonPageViewModel.SelectedMusic = new NavigationPage(new AlbumPlayer(_unityContainer, new ApiSearchMusicModel(playlistItem)));
-
-                //await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedMusic);
+                _vm.CommonPageViewModel.SelectedAlbum = new AlbumPlayer();
+                await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedAlbum);
             }
         }
-        private async Task<bool> AlbumSelectedPage(string videoId) 
+        private async Task<bool> AlbumSelectedPage(string videoId)
         {
-            //_vm.MusicPlayer.HideBottomPlayer();
-            //_vm.MusicPlayer.StopBottomPlayer();
-
-            //if (_vm.CommonPageViewModel.SelectedMusic != null && string.Equals(((AlbumPlayer)_vm.CommonPageViewModel.SelectedMusic.CurrentPage).CurrentVideoId, videoId))
+            if (_vm.CommonPageViewModel.SelectedAlbum != null && string.Equals(_vm.CommonPageViewModel.SelectedAlbum.PlaylistItem.VideoId, videoId))
             {
-                //await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedMusic);
+                await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedAlbum);
                 return false;
             }
 
             return true;
-        }       
+        }
         protected async override void OnAppearing()
         {
             _formIsVisible = true;
@@ -161,25 +118,26 @@ namespace TocaTudoPlayer.Xamarim.Pages
             {
                 if (CrossMTAdmob.Current.IsInterstitialLoaded())
                 {
-                    CrossMTAdmob.Current.LoadInterstitial(App.AppConfig.AdMob.AdsIntersticialAlbum);
+                    //TODO: Insert saved album ad
+                    //CrossMTAdmob.Current.LoadInterstitial(App.AppConfigAdMob.AdsSavedMusicIntersticial);
                     CrossMTAdmob.Current.ShowInterstitial();
                 }
-                else
-                    _audioPlayerPlay();
 
                 _showInterstitialOnAppearing = false;
             }
 
-            if (!_vm.IsInternetAvaiable)
-            {
-                //stlMusicSearch.IsVisible = false;
-            }
-            //if (!_vm.IsInternetAvaiable && btnSalvos.IsEnabled)
-            //{
-            //    LoadSavedMusicData();
-            //}
-
             base.OnAppearing();
+
+            await Task.Delay(10000).ContinueWith((tsk) =>
+            {
+                if (tsk.IsCompleted)
+                {
+                    Device.BeginInvokeOnMainThread(() =>
+                    {
+                        ((Grid)stlBottom.Children[0]).RowDefinitions[0].Height = GridLength.Auto;
+                    });
+                }
+            });
         }
         protected override void OnDisappearing()
         {

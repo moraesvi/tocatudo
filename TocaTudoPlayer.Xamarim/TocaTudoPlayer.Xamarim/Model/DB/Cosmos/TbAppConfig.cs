@@ -5,10 +5,10 @@
         public TbAppConfig()
         {
         }
-        public TbAppConfig(AppConfig item)
+        public TbAppConfig(AppConfigAdMob item)
         {
-            AdMob = new TbAppConfigAdMob(item.AdMob);
+            //AdMob = new TbAppConfigAdMob(item);
         }
-        public TbAppConfigAdMob AdMob { get; set; }
+        //public TbAppConfigAdMob AdMob { get; set; }
     }
 }

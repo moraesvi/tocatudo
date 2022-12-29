@@ -4,56 +4,80 @@ using Android.Content.PM;
 using Android.Gms.Ads;
 using Android.OS;
 using Android.Runtime;
+using AndroidX.Core.View;
+using Plugin.CurrentActivity;
+using Plugin.FirebasePushNotification;
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using TocaTudo.Services;
 using TocaTudoPlayer.Xamarim;
-using TocaTudoPlayer.Xamarim.Logic;
+using Xamarin.CommunityToolkit.Helpers;
+using Xamarin.Essentials;
+using Xamarin.Forms;
 
+[assembly: Dependency(typeof(TocaTudo.Environment))]
 namespace TocaTudo
 {
-    [Activity(Label = "@string/app_name", Icon = "@drawable/icon", Theme = "@style/MainTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.Locale | ConfigChanges.ScreenSize | ConfigChanges.Orientation)]
+    [Activity(Theme = "@style/MainTheme", ConfigurationChanges = ConfigChanges.Locale | ConfigChanges.ScreenSize | ConfigChanges.Orientation)]
     public class MainActivity : global::Xamarin.Forms.Platform.Android.FormsAppCompatActivity
     {
-        private bool _isConfigurationChange = false;
         private AudioServiceBinder _binder;
+        private readonly WeakEventManager _binderConnected;
         private AudioServiceConnection _audioServiceConnection;
-        private ICosmosDbLogic _cosmosDbLogic;
-
-        private event Action _binderConnected;
-        public AudioServiceConnection AudioServiceConnection => _audioServiceConnection;
+        public MainActivity()
+        {
+            _binderConnected = new WeakEventManager();
+            IsConfigurationChanged = false;
+        }
         public AudioServiceBinder Binder
         {
             get { return _binder; }
             set
             {
                 _binder = value;
-                _binderConnected();
+                _binderConnected.RaiseEvent(this, null, nameof(BinderConnected));
             }
         }
-        public event Action BinderConnected
+        public event EventHandler BinderConnected
         {
-            add => _binderConnected += value;
-            remove => _binderConnected -= value;
+            add => _binderConnected.AddEventHandler(value);
+            remove => _binderConnected.RemoveEventHandler(value);
         }
-        public MusicModelServicePlayer MusicModelServicePlayerParameter { get; set; }
-        public AlbumModelServicePlayer AlbumModelServicePlayerParameter { get; set; }
-        public PlaylistItemServicePlayer PlaylistItemServicePlayerParameter { get; set; }
+        public bool IsConfigurationChanged { get; set; }
+        public static AlbumModelServicePlayer AlbumModelServicePlayerParameter { get; set; }
+        public static MusicModelServicePlayer MusicModelServicePlayerParameter { get; set; }
+        public static AlbumMusicModelServicePlayer AlbumMusicModelServicePlayerParameter { get; set; }
+        public static ItemServicePlayer PlaylistItemServicePlayerParameter { get; set; }
         public byte[] AudioServiceMusicParameter { get; set; }
         protected override void OnCreate(Bundle savedInstanceState)
         {
-            TabLayoutResource = Resource.Layout.Tabbar;
-            ToolbarResource = Resource.Layout.Toolbar;
-
             base.OnCreate(savedInstanceState);
 
-            Plugin.CurrentActivity.CrossCurrentActivity.Current.Init(this, savedInstanceState);
+            FirebasePushNotificationManager.ShowAlert = false;
+            FirebasePushNotificationManager.ShouldShowWhen = false;
+
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+            {
+                FirebasePushNotificationManager.DefaultNotificationChannelId = "FirebasePushNotificationChannel";
+                FirebasePushNotificationManager.DefaultNotificationChannelName = "General";
+            }
+
+            //If debug you should reset the token each time.
+#if DEBUG
+            FirebasePushNotificationManager.Initialize(this, true);
+#else
+            FirebasePushNotificationManager.Initialize(this, false);
+#endif
+            FirebasePushNotificationManager.IconResource = Resource.Drawable.icon;
+            FirebasePushNotificationManager.ProcessIntent(this, Intent);
+
+            Window.SetFlags(Android.Views.WindowManagerFlags.Secure, Android.Views.WindowManagerFlags.Secure);
+
+            CrossCurrentActivity.Current.Init(this, savedInstanceState);
+            Platform.Init(this, savedInstanceState);
+            Forms.Init(this, savedInstanceState);
             MobileAds.Initialize(ApplicationContext);
-            Xamarin.Essentials.Platform.Init(this, savedInstanceState);
-            Xamarin.Forms.Forms.Init(this, savedInstanceState);
-            Xamarin.Forms.FormsMaterial.Init(this, savedInstanceState);
-
-            _cosmosDbLogic = new CosmosDbLogic(App.InitializeCosmosClientInstance());
-
-            AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
 
             LoadApplication(new App());
         }
@@ -68,29 +92,45 @@ namespace TocaTudo
         }
         protected override void OnDestroy()
         {
-            base.OnDestroy();
+            FirebasePushNotificationManager.ShowAlert = true;
+            FirebasePushNotificationManager.ShouldShowWhen = true;
 
-            if (!_isConfigurationChange)
-            {
-                UnbindService(_audioServiceConnection);
-            }
+            base.OnDestroy();
+            UnbindService(_audioServiceConnection);
+        }
+        protected override void OnNewIntent(Intent intent)
+        {
+            base.OnNewIntent(intent);
+            FirebasePushNotificationManager.ProcessIntent(this, intent);
         }
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, [GeneratedEnum] Android.Content.PM.Permission[] grantResults)
         {
-            Xamarin.Essentials.Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+            Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
-        private async void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs unhandledException)
+    }
+    public class Environment : IEnvironment
+    {
+        public async void SetStatusBarColor(System.Drawing.Color color, bool darkStatusBarTint)
         {
-            AppException ex = new AppException();
-            Exception exception = (Exception)unhandledException.ExceptionObject;
+            if (Build.VERSION.SdkInt < Android.OS.BuildVersionCodes.Lollipop)
+                return;
 
-            ex.LocalDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-            ex.Msg = exception.Message;
-            ex.InnerMsg = exception.InnerException?.Message;
-            ex.StackTrace = exception.StackTrace;
+            var activity = Platform.CurrentActivity;
+            var window = activity.Window;
 
-            await _cosmosDbLogic.InsertAppException(ex);
+            //this may not be necessary(but may be fore older than M)
+            window.AddFlags(Android.Views.WindowManagerFlags.DrawsSystemBarBackgrounds);
+            window.ClearFlags(Android.Views.WindowManagerFlags.TranslucentStatus);
+
+
+            if (Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.M)
+            {
+                await Task.Delay(50);
+                WindowCompat.GetInsetsController(window, window.DecorView).AppearanceLightStatusBars = darkStatusBarTint;
+            }
+
+            window.SetStatusBarColor(color.ToPlatformColor());
         }
-    } 
+    }
 }

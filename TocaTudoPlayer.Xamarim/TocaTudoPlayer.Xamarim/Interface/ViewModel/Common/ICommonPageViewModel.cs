@@ -7,9 +7,9 @@ namespace TocaTudoPlayer.Xamarim
     {
         string AlbumName { get; }
         ImageSource AlbumImage { get; }
-        int AlbumPlayingGridSize { get; }
-        NavigationPage SelectedMusic { get; set; }
-        ICommonFormDownloadViewModel FormDownloadViewModel { get; }
+        int AlbumPlayingGridSize { get; set; }
+        AlbumPlayer SelectedAlbum { get; set; }
+        CommonFormDownloadViewModel FormDownloadViewModel { get; }
         void InitAlbumPlayingGrid(string albumName, ImageSource albumImage);
     }
 }

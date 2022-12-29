@@ -1,19 +1,23 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
 namespace TocaTudoPlayer.Xamarim
 {
     public interface ICommonMusicPageViewModel
     {
-        bool ExistsSavedAnyAlbum { get; }
-        UserMusicAlbumSelect[] MusicAlbumPlaylistSelected { get; }
+        List<UserMusicAlbumSelect> MusicAlbumPlaylistSelected { get; }
         ObservableCollection<SelectModel> AlbumMusicSavedSelectCollection { get; set; }
-        void InitFormMusicUtils(SearchMusicModel music);
+        ObservableCollection<SelectModel> AlbumMusicSavedSelectFilteredCollection { get; set; }
+        void InitFormMusicUtils(MusicAlbumDialogDataModel music);
+        bool HasAlbumSaved(string videoId);
+        UserMusicAlbumSelect[] GetAlbumSaved(string videoId);
         Task LoadMusicAlbumPlaylistSelected();
         void LoadAlbumMusicSavedSelect();
-        Task<bool> ExistsMusicAlbumPlaylist(string albumName, SearchMusicModel music);
-        Task InsertMusicAlbumPlaylistSelected(string albumName, SearchMusicModel music);
-        Task UpdateMusicAlbumPlaylistSelected(int albumId, string albumName, SearchMusicModel musicModel);
-        Task DeleteMusicAlbumPlaylistSelected(SearchMusicModel musicModel);
+        Task<bool> ExistsMusicAlbumPlaylist(string albumName, ICommonMusicModel music);
+        Task InsertOrUpdateMusicAlbumPlaylistSelected(string albumName, UserMusic music, List<UserMusicAlbumSelect> musicAlbumPlaylist);
+        Task InsertOrUpdateMusicAlbumPlaylistSelected(string albumName, ICommonMusicModel music);
+        Task UpdateMusicAlbumPlaylistSelected(int albumId, string albumName, ICommonMusicModel musicModel);
+        Task DeleteMusicAlbumPlaylistSelected(ICommonMusicModel musicModel);
     }
 }

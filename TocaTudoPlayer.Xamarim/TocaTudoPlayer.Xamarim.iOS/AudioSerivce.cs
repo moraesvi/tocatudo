@@ -5,6 +5,7 @@ using Foundation;
 using System;
 using System.IO;
 using TocaTudoPlayer.Xamarim.iOS;
+using Xamarin.CommunityToolkit.Helpers;
 using Xamarin.Forms;
 
 [assembly: Dependency(typeof(AudioSerivce))]
@@ -14,14 +15,15 @@ namespace TocaTudoPlayer.Xamarim.iOS
     {
         private AVPlayer _player;
         private ICommonMusicModel _music;
-        private Action _playerInitializing;
-        private Action<ICommonMusicModel> _playerReady;
-        private Action<ICommonMusicModel> _playerReadyBuffering;
-        private Action _playerSeekComplete;
-        private Action<PlaylistItemServicePlayer> _playerPlaylistChanged;
-        private Action<ICommonMusicModel> _playerInvalidUri;
-
-        public event Action PlayerLosedAudioFocus;
+        private WeakEventManager _playerInitializing;
+        private WeakEventManager<ICommonMusicModel> _playerReady;
+        private WeakEventManager<ICommonMusicModel> _playerReadyBuffering;
+        private WeakEventManager _playerSeekComplete;
+        private WeakEventManager<PlaylistItemServicePlayer> _playerPlaylistChanged;
+        private WeakEventManager<ICommonMusicModel> _playerInvalidUri;
+        private WeakEventManager<string> _playerAlbumInvalidUri;
+        private WeakEventManager<ICommonMusicModel> _playerMusicInvalidUri;
+        private WeakEventManager _playerLosedAudioFocus;
 
         public bool IsPlaying
         {
@@ -29,62 +31,47 @@ namespace TocaTudoPlayer.Xamarim.iOS
         }
 
         public bool EventsBinded => throw new NotImplementedException();
-
-        public event Action PlayerInitializing
+        public event EventHandler PlayerInitializing
         {
-            add
-            {
-                _playerInitializing += value;
-            }
-            remove
-            {
-                _playerInitializing -= value;
-            }
+            add => _playerInitializing.AddEventHandler(value);
+            remove => _playerInitializing.RemoveEventHandler(value);
         }
-        public event Action<ICommonMusicModel> PlayerReady
+        public event EventHandler<ICommonMusicModel> PlayerReady
         {
-            add
-            {
-                _playerReady += value;
-            }
-            remove
-            {
-                _playerReady -= value;
-            }
+            add => _playerReady.AddEventHandler(value);
+            remove => _playerReady.RemoveEventHandler(value);
         }
-        public event Action PlayerSeekComplete
+        public event EventHandler PlayerSeekComplete
         {
-            add
-            {
-                _playerSeekComplete += value;
-            }
-            remove
-            {
-                _playerSeekComplete -= value;
-            }
+            add => _playerSeekComplete.AddEventHandler(value);
+            remove => _playerSeekComplete.RemoveEventHandler(value);
         }
-        public event Action<ICommonMusicModel> PlayerReadyBuffering
+        public event EventHandler<ICommonMusicModel> PlayerReadyBuffering
         {
-            add
-            {
-                _playerReadyBuffering += value;
-            }
-            remove
-            {
-                _playerReadyBuffering -= value;
-            }
+            add => _playerReadyBuffering.AddEventHandler(value);
+            remove => _playerReadyBuffering.RemoveEventHandler(value);
         }
-        public event Action<PlaylistItemServicePlayer> PlayerPlaylistChanged
+        public event EventHandler<PlaylistItemServicePlayer> PlayerPlaylistChanged
         {
-            add => _playerPlaylistChanged += value;
-            remove => _playerPlaylistChanged -= value;
+            add => _playerPlaylistChanged.AddEventHandler(value);
+            remove => _playerPlaylistChanged.RemoveEventHandler(value);
         }
-        public event Action<ICommonMusicModel> PlayerInvalidUri
+        public event EventHandler<string> PlayerAlbumInvalidUri
         {
-            add => _playerInvalidUri += value;
-            remove => _playerInvalidUri -= value;
+            add => _playerAlbumInvalidUri.AddEventHandler(value);
+            remove => _playerAlbumInvalidUri.RemoveEventHandler(value);
         }
-        public void Source(string url)
+        public event EventHandler<ICommonMusicModel> PlayerMusicInvalidUri
+        {
+            add => _playerMusicInvalidUri.AddEventHandler(value);
+            remove => _playerMusicInvalidUri.RemoveEventHandler(value);
+        }
+        public event EventHandler PlayerLosedAudioFocus
+        {
+            add => _playerLosedAudioFocus.AddEventHandler(value);
+            remove => _playerLosedAudioFocus.RemoveEventHandler(value);
+        }
+        public void Source(string url, string videoId)
         {
             AVAudioSession.SharedInstance().SetCategory(AVAudioSessionCategory.Playback);
 
@@ -95,7 +82,7 @@ namespace TocaTudoPlayer.Xamarim.iOS
                 {
                     if (_player.Status == AVPlayerStatus.ReadyToPlay)
                     {
-                        _playerReady(null);
+                        _playerReady.HandleEvent(this, null, nameof(PlayerReady));
                     }
                 });
             }
@@ -115,7 +102,7 @@ namespace TocaTudoPlayer.Xamarim.iOS
                 {
                     if (_player.Status == AVPlayerStatus.ReadyToPlay)
                     {
-                        _playerReady(music);
+                        _playerReady.HandleEvent(this, _music, nameof(PlayerReady));
                     }
                 });
             }
@@ -141,7 +128,7 @@ namespace TocaTudoPlayer.Xamarim.iOS
                 {
                     if (_player.Status == AVPlayerStatus.ReadyToPlay)
                     {
-                        _playerReady(null);
+                        _playerReady.HandleEvent(this, null, nameof(PlayerReady));
                     }
                 });
             }
@@ -169,7 +156,7 @@ namespace TocaTudoPlayer.Xamarim.iOS
                 {
                     if (_player.Status == AVPlayerStatus.ReadyToPlay)
                     {
-                        _playerReady(music);
+                        _playerReady.HandleEvent(this, music, nameof(PlayerReady));
                     }
                 });
             }
@@ -218,12 +205,12 @@ namespace TocaTudoPlayer.Xamarim.iOS
             throw new NotImplementedException();
         }
 
-        public void Source(string url, AlbumModelServicePlayer albumServicePlayer)
+        public void Source(string url, string videoId, AlbumModelServicePlayer albumServicePlayer)
         {
             throw new NotImplementedException();
         }
 
-        public void Source(string url, MusicModelServicePlayer musicServicePlayer)
+        public void Source(string url, string videoId, MusicModelServicePlayer musicServicePlayer)
         {
             throw new NotImplementedException();
         }
@@ -269,6 +256,46 @@ namespace TocaTudoPlayer.Xamarim.iOS
         }
 
         public void Source(byte[] music, ICommonMusicModel musicPlayer, MusicModelServicePlayer musicServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(string url, ICommonMusicModel musicPlayer, MusicStatusBottomModel musicStatusBottom)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(string url, string videoId, MusicStatusBottomModel musicStatusBottom, AlbumModelServicePlayer albumServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(string url, string videoId, MusicStatusBottomModel musicStatusBottom, MusicModelServicePlayer musicServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(string url, ICommonMusicModel musicPlayer, MusicStatusBottomModel musicStatusBottom, MusicModelServicePlayer musicServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(string url, ICommonMusicModel musicPlayer, MusicStatusBottomModel musicStatusBottom, AlbumModelServicePlayer albumServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(byte[] music, ICommonMusicModel musicPlayer, MusicStatusBottomModel musicStatusBottom)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Source(byte[] music, ICommonMusicModel musicPlayer, MusicStatusBottomModel musicStatusBottom, MusicModelServicePlayer musicServicePlayer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Next(PlaylistItemServicePlayer playlistItem)
         {
             throw new NotImplementedException();
         }

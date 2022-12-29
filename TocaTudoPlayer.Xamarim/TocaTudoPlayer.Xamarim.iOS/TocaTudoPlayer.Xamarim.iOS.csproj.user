@@ -4,7 +4,8 @@
     <SelectedDevice>Local Device</SelectedDevice>
     <ActiveDebugProfile>Local Device</ActiveDebugProfile>
     <DefaultDevice>iPhone 8 iOS 14.5</DefaultDevice>
-    <DeveloperId />
-    <DevelopmentTeamId />
+    <DeveloperId>danielalmeidacustodio%40gmail.com</DeveloperId>
+    <DevelopmentTeamId>RVTKPDJPC3</DevelopmentTeamId>
+    <SelectedPlatformGroup>LocalDevice</SelectedPlatformGroup>
   </PropertyGroup>
 </Project>

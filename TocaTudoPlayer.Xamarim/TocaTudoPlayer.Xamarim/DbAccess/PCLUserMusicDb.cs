@@ -22,9 +22,9 @@ namespace TocaTudoPlayer.Xamarim
         {
             _lstUserMusic?.Clear();
         }
-        public async Task<bool> SaveMusicOnLocalDb(MusicModel music, (bool, byte[]) tpMusic)
+        public async Task<bool> SaveOrUpdateMusicOnLocalDb((bool, byte[], object) tpMusic)
         {
-            if (music == null)
+            if (tpMusic.Item2 == null || tpMusic.Item3 == null)
                 return false;
 
             bool musicSaved = false;
@@ -33,7 +33,7 @@ namespace TocaTudoPlayer.Xamarim
 
             await LoadDb();
 
-            userMusic = _lstUserMusic.Where(lu => string.Equals(lu.VideoId, ((MusicModel)music).VideoId))
+            userMusic = _lstUserMusic.Where(lu => string.Equals(lu.VideoId, ((MusicModel)tpMusic.Item3).VideoId))
                                      .FirstOrDefault();
             if (userMusic != null)
             {
@@ -42,8 +42,8 @@ namespace TocaTudoPlayer.Xamarim
             }
             else
             {
-                userMusic = new UserMusic((MusicModel)music, tpMusic.Item1);
-                userMusic.MusicPath = await userMusic.GetFileNameLocalPath();
+                userMusic = new UserMusic((MusicModel)tpMusic.Item3, tpMusic.Item1);
+                userMusic.MusicPath = userMusic.GetFileNameLocalPath();
 
                 _lstUserMusic.Add(userMusic);
             }
@@ -52,6 +52,38 @@ namespace TocaTudoPlayer.Xamarim
             {
                 musicSaved = await _pclStorage.SaveFile(UserMusic.UserMusicSavedLocalKey, _lstUserMusic);
                 await File.WriteAllBytesAsync(userMusic.MusicPath, tpMusic.Item2);
+            }
+            catch
+            {
+                musicSaved = false;
+            }
+
+            UnLoadDb();
+
+            return musicSaved;
+        }
+        public async Task<bool> UpdateMusicOnLocalDb(UserMusic userMusic)
+        {
+            if (userMusic == null)
+                return false;
+
+            await LoadDb();
+            await EnsureUniqueValidItemInQueue(_lstUserMusic);
+
+            UserMusic uMusic = _lstUserMusic.Where(lu => string.Equals(lu.VideoId, userMusic.VideoId))
+                                            .FirstOrDefault();
+
+            if (userMusic == null)
+                return false;
+
+            bool musicSaved = false;
+
+            try
+            {
+                uMusic.DateTimeIn = DateTimeOffset.UtcNow.ToString();
+
+                musicSaved = await _pclStorage.SaveFile(UserMusic.UserMusicSavedLocalKey, _lstUserMusic);
+                await File.WriteAllBytesAsync(uMusic.MusicPath, userMusic.MusicImage);
             }
             catch
             {
@@ -74,8 +106,17 @@ namespace TocaTudoPlayer.Xamarim
             UserMusic userMusic = _lstUserMusic.Where(lu => string.Equals(lu.VideoId, videoId))
                                                .FirstOrDefault();
 
-            if (userMusic == null)
+            if (userMusic == null || string.IsNullOrEmpty(userMusic?.MusicPath))
                 return (null, null);
+
+            if (!await _pclStorage.FileExists(userMusic.MusicPath))
+            {
+                UserMusic musicToRemove = _lstUserMusic?.Where(um => string.Equals(um.VideoId, userMusic.VideoId))
+                                                       ?.FirstOrDefault();
+                await RemoveMusicFromLocalDb(musicToRemove, _lstUserMusic);
+
+                return (null, null);
+            }
 
             byte[] music = await File.ReadAllBytesAsync(userMusic.MusicPath);
 
@@ -93,5 +134,52 @@ namespace TocaTudoPlayer.Xamarim
 
             return _lstUserMusic.Exists(lu => string.Equals(lu.VideoId, videoId));
         }
+        public async Task<List<UserMusic>> EnsureUniqueValidItemInQueue(List<UserMusic> lstMusic)
+        {
+            UserMusic musicToRemove = lstMusic?.GroupBy(um => um.VideoId)
+                                              ?.Where(um => um.Count() > 1)
+                                              ?.SelectMany(um => um.ToArray())
+                                              ?.FirstOrDefault();
+            if (musicToRemove != null)
+            {
+                await RemoveMusicFromLocalDb(musicToRemove, lstMusic);
+            }
+
+            return _lstUserMusic;
+        }
+        public async Task RemoveMusicFromLocalDb(string videoId, Action musicRemoved)
+        {
+            await LoadDb();
+
+            if (_lstUserMusic == null || _lstUserMusic.Count == 0)
+                return;
+
+            UserMusic userMusicRemove = _lstUserMusic.Where(um => string.Equals(um.VideoId, videoId))
+                                                     .FirstOrDefault();
+
+            if (userMusicRemove == null)
+                return;
+
+            _lstUserMusic.Remove(userMusicRemove);
+
+            await _pclStorage.RemoveFile(userMusicRemove.MusicPath);
+            await _pclStorage.SaveFile(UserMusic.UserMusicSavedLocalKey, _lstUserMusic);
+
+            await LoadDb();
+
+            musicRemoved();
+        }
+
+        #region Private Methods
+        private async Task RemoveMusicFromLocalDb(UserMusic musicToRemove, List<UserMusic> lstMusic)
+        {
+            lstMusic.Remove(musicToRemove);
+
+            await _pclStorage.SaveFile(UserMusic.UserMusicSavedLocalKey, lstMusic);
+            await _pclStorage.RemoveFile(musicToRemove.MusicPath);
+
+            await LoadDb();
+        }
+        #endregion
     }
 }

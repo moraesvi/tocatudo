@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- Change this value to be any Hex value or to refer to a custom color from your colors.xml file, eg `@color/colorPrimary` -->
+	<background android:drawable="@color/colorPrimary" />
+	<!-- Change this value to point to the newly created images added above in Step 1; e.g. for /drawable-hdpi/newsplashscreenimage.png, set this value to `@drawablenewsplashscreenimage` -->
+	<foreground android:drawable="@drawable/splash_screen" />
+</adaptive-icon>

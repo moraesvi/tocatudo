@@ -1,28 +1,31 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TocaTudoPlayer.Xamarim.Resources;
+using Xamarin.CommunityToolkit.Helpers;
 using Xamarin.Forms;
-using YoutubeParse.ExplodeV2;
-using YoutubeParse.ExplodeV2.Videos.Streams;
+using YoutubeExplode;
+using YoutubeExplode.Videos.Streams;
 
 namespace TocaTudoPlayer.Xamarim
 {
-    public class CommonMusicPlayerViewModel : BaseViewModel, ICommonMusicPlayerViewModel
+    public class CommonMusicPlayerViewModel : BaseViewModel
     {
+        private const int TIME_DELAY_REQUIRED_FOR_MULTIPLES_SELECTIONS = 20;
         private readonly IAudio _audioPlayer;
         private readonly IPCLStorageDb _pclStorageDb;
         private readonly IPCLUserMusicLogic _pclUserMusicLogic;
         private readonly YoutubeClient _ytClient;
-        private readonly IMusicPlayedHistoryViewModel _musicPlayedHistoryViewModel;
-        private readonly IMusicBottomPlayerViewModel _bottomPlayerViewModel;
+        private readonly MusicPlayedHistoryViewModel _musicPlayedHistoryViewModel;
+        private readonly MusicBottomPlayerViewModel _bottomPlayerViewModel;
         private HttpDownload _download;
         private static MusicPlayerConfig _musicPlayerConfig;
         private static MusicPlayerConfig _nextMusicPlayerConfig;
-        private Action<ICommonMusicModel> _musicPlayedHistoricIsSaved;
-        private event Action _playerLosedAudioFocus;
-        public CommonMusicPlayerViewModel(IPCLStorageDb pclStorageDb, IPCLUserMusicLogic pclUserMusicLogic, IMusicPlayedHistoryViewModel musicPlayedHistoryViewModel, IMusicBottomPlayerViewModel bottomPlayerViewModel, YoutubeClient ytClient)
+        private WeakEventManager<ICommonMusicModel> _musicPlayedHistoricIsSaved;
+        private WeakEventManager _playerLosedAudioFocus;
+        public CommonMusicPlayerViewModel(IPCLStorageDb pclStorageDb, IPCLUserMusicLogic pclUserMusicLogic, MusicPlayedHistoryViewModel musicPlayedHistoryViewModel, MusicBottomPlayerViewModel bottomPlayerViewModel, YoutubeClient ytClient)
         {
             _audioPlayer = DependencyService.Get<IAudio>();
             _pclStorageDb = pclStorageDb;
@@ -30,24 +33,45 @@ namespace TocaTudoPlayer.Xamarim
             _musicPlayedHistoryViewModel = musicPlayedHistoryViewModel;
             _bottomPlayerViewModel = bottomPlayerViewModel;
             _ytClient = ytClient;
+            _playerLosedAudioFocus = new WeakEventManager();
+            _musicPlayedHistoricIsSaved = new WeakEventManager<ICommonMusicModel>();
 
             _download = new HttpDownload();
 
+            _audioPlayer.PlayerReady -= AudioPlayer_PlayerReady;
+            _audioPlayer.PlayerAlbumInvalidUri -= AudioPlayer_PlayerAlbumInvalidUri;
+            _audioPlayer.PlayerMusicInvalidUri -= AudioPlayer_PlayerMusicInvalidUri;
+            _bottomPlayerViewModel.NextMusicEvent -= BottomPlayerViewModel_NextMusicEvent;
+            _audioPlayer.PlayerLosedAudioFocus -= AudioPlayer_PlayerLosedAudioFocus;
+
             _audioPlayer.PlayerReady += AudioPlayer_PlayerReady;
-            _audioPlayer.PlayerInvalidUri += AudioPlayer_PlayerInvalidUri;
+            _audioPlayer.PlayerAlbumInvalidUri += AudioPlayer_PlayerAlbumInvalidUri;
+            _audioPlayer.PlayerMusicInvalidUri += AudioPlayer_PlayerMusicInvalidUri;
             _bottomPlayerViewModel.NextMusicEvent += BottomPlayerViewModel_NextMusicEvent;
             _audioPlayer.PlayerLosedAudioFocus += AudioPlayer_PlayerLosedAudioFocus;
         }
 
-        public event Action<ICommonMusicModel> MusicPlayedHistoricIsSaved
+        public event EventHandler<ICommonMusicModel> MusicPlayedHistoricIsSaved
         {
-            add => _musicPlayedHistoricIsSaved += value;
-            remove => _musicPlayedHistoricIsSaved -= value;
+            add => _musicPlayedHistoricIsSaved.AddEventHandler(value);
+            remove => _musicPlayedHistoricIsSaved.RemoveEventHandler(value);
         }
-        public event Action PlayerLosedAudioFocus
+        public event EventHandler PlayerLosedAudioFocus
         {
-            add => _playerLosedAudioFocus += value;
-            remove => _playerLosedAudioFocus -= value;
+            add => _playerLosedAudioFocus.AddEventHandler(value);
+            remove => _playerLosedAudioFocus.RemoveEventHandler(value);
+        }
+        public bool BottomPlayerIsActive => _bottomPlayerViewModel.PlayerIsActive;
+        public bool HasMusicPlaying => _audioPlayer.IsPlaying;
+        public ICommonMusicModel MusicPlayingNow
+        {
+            get { return _bottomPlayerViewModel.MusicPlayingNow; }
+            set { _bottomPlayerViewModel.MusicPlayingNow = value; }
+        }
+        public MusicSearchType KindMusicPlayingNow
+        {
+            get { return _bottomPlayerViewModel.KindMusicPlayingNow; }
+            set { _bottomPlayerViewModel.KindMusicPlayingNow = value; }
         }
         public SearchMusicModel LastMusicPlayed
         {
@@ -58,17 +82,39 @@ namespace TocaTudoPlayer.Xamarim
         {
             _musicPlayerConfig = config;
         }
+        public void SetAlbumMusicPlaylist(AlbumMusicModelServicePlayer musicServicePlayer)
+        {
+            _audioPlayer.Source(musicServicePlayer);
+        }
+        public void ClearAlbumSource()
+        {
+            _audioPlayer.ClearAlbumSource();
+        }
+        public void HideStatusBarPlayerControls()
+        {
+            _audioPlayer.HideStatusBarPlayerControls();
+        }
+        public void PlayMusic()
+        {
+            if (AppHelper.MusicPlayerInterstitialIsLoadded)
+                return;
+
+            _audioPlayer.Play();
+            if (MusicPlayingNow != null)
+            {
+                MusicPlayingNow.IsPlaying = true;
+                MusicPlayingNow.IsActiveMusic = true;
+            }
+        }
         public async Task PlayMusic(ICommonMusicModel music, CancellationToken cancellationToken)
         {
-            AppHelper.MusicPlayerInterstitialWasShowed = false;
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
             await _pclUserMusicLogic.LoadDb();
-
-            music.ShowMerchandisingAlert = _musicPlayerConfig.CheckIfMusicPlayedCountAchieveTotal(autoRebuild: true);
 
             if (music.IsSavedOnLocalDb)
             {
                 await _pclUserMusicLogic.LoadDb();
-                await PlayPauseMusicFromDb(music);
+                await PlayMusicFromDb(music);
             }
             else
             {
@@ -76,25 +122,25 @@ namespace TocaTudoPlayer.Xamarim
 
                 if (musicSavedInDb)
                 {
-                    await PlayPauseMusicFromDb(music);
+                    await PlayMusicFromDb(music);
                 }
                 else
                 {
                     await Task.Run(async () => //Required for Android
                     {
-                        _bottomPlayerViewModel.StartBottomPlayer();
+                        _bottomPlayerViewModel.Init(this);
+                        _bottomPlayerViewModel.StartBottomPlayer(music.SearchType);
 
                         music.IsLoadded = false;
                         music.IsActiveMusic = true;
                         music.IsBufferingMusic = true;
 
                         Task<StreamManifest> tskMusic = _ytClient.Videos.Streams.GetManifestAsync(music.VideoId, cancellationToken).AsTask();
-                        Task tskMusicImageInfo = _bottomPlayerViewModel.MusicStatusBottomModel.LoadMusicImageInfo(music.VideoId, cancellationToken);
 
                         AudioOnlyStreamInfo streamInfo = null;
 
-                        await Task.Delay(300);//Required for multiples selections
-                        await Task.WhenAll(tskMusic, tskMusicImageInfo).ContinueWith(tsk =>
+                        await Task.Delay(TIME_DELAY_REQUIRED_FOR_MULTIPLES_SELECTIONS);//Required for multiples selections
+                        await tskMusic.ContinueWith(tsk =>
                         {
                             if (!tskMusic.IsCanceled && !tskMusic.IsFaulted)
                             {
@@ -105,14 +151,11 @@ namespace TocaTudoPlayer.Xamarim
                                                          .Where(audio => !string.Equals(audio.Container.ToString(), "webm", StringComparison.OrdinalIgnoreCase))
                                                          .FirstOrDefault();
                                 }
-                                catch (Exception)
-                                {
-
-                                }
+                                catch (Exception) { }
                             }
                         });
 
-                        if (tskMusic.IsFaulted || tskMusicImageInfo.IsFaulted)
+                        if (tskMusic.IsFaulted)
                         {
                             PlayMusicFaultedResult(music, tskMusic);
                             return;
@@ -127,16 +170,28 @@ namespace TocaTudoPlayer.Xamarim
                             return;
                         }
 
-                        MusicModelServicePlayer musicModel = new MusicModelServicePlayer()
+                        ShowMerchandisingAlert(music);
+
+                        await _bottomPlayerViewModel.MusicStatusBottomModel.LoadMusicImageInfo(music);
+
+                        MusicModelServicePlayer musicModel = new MusicModelServicePlayer(music)
                         {
                             Id = music.Id,
                             Number = 0,
                             Music = music.MusicName,
-                            Image = _bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage
+                            Image = _bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage,
                         };
 
-                        _audioPlayer.Source(streamInfo.Url, music, musicModel);
-                    }).ConfigureAwait(false);
+                        _audioPlayer.Source(streamInfo.Url, music, _bottomPlayerViewModel.MusicStatusBottomModel, musicModel);
+
+                        IsInternetAvaiable = true;
+
+                        App.EventTracker.SendEvent("PlayMusic", new Dictionary<string, string>()
+                        {
+                            { "MusicName", music.MusicName },
+                            { "VideoId", music.VideoId }
+                        });
+                    });
                 }
             }
 
@@ -144,14 +199,14 @@ namespace TocaTudoPlayer.Xamarim
         }
         public async Task PlayMusic(ICommonMusicModel music, SearchMusicModel[] nextMusics, MusicPlayerConfig config, CancellationToken cancellationToken)
         {
-            AppHelper.MusicPlayerInterstitialWasShowed = false;
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
             _nextMusicPlayerConfig = config;
 
             await _pclUserMusicLogic.LoadDb();
 
             if (music.IsSavedOnLocalDb)
             {
-                await PlayPauseMusicFromDb(music, nextMusics);
+                await PlayFromDb(music, nextMusics);
             }
             else
             {
@@ -159,25 +214,25 @@ namespace TocaTudoPlayer.Xamarim
 
                 if (musicSavedInDb)
                 {
-                    await PlayPauseMusicFromDb(music, nextMusics);
+                    await PlayFromDb(music, nextMusics);
                 }
                 else
                 {
                     await Task.Run(async () => //Required for Android
                     {
-                        _bottomPlayerViewModel.StartBottomPlayer(nextMusics);
+                        _bottomPlayerViewModel.Init(this);
+                        _bottomPlayerViewModel.StartBottomPlayer(music.SearchType, nextMusics);
 
                         music.IsLoadded = false;
                         music.IsActiveMusic = true;
                         music.IsBufferingMusic = true;
 
                         Task<StreamManifest> tskMusic = _ytClient.Videos.Streams.GetManifestAsync(music.VideoId, cancellationToken).AsTask();
-                        Task tskMusicImageInfo = _bottomPlayerViewModel.MusicStatusBottomModel.LoadMusicImageInfo(music.VideoId, cancellationToken);
 
                         AudioOnlyStreamInfo streamInfo = null;
 
-                        await Task.Delay(300);//Required for multiples selections
-                        await Task.WhenAll(tskMusic, tskMusicImageInfo).ContinueWith(tsk =>
+                        await Task.Delay(TIME_DELAY_REQUIRED_FOR_MULTIPLES_SELECTIONS);//Required for multiples selections
+                        await Task.WhenAll(tskMusic).ContinueWith(tsk =>
                         {
                             if (!tskMusic.IsCanceled && !tskMusic.IsFaulted)
                             {
@@ -195,16 +250,26 @@ namespace TocaTudoPlayer.Xamarim
                             }
                         });
 
-                        if (tskMusic.IsFaulted || tskMusicImageInfo.IsFaulted)
+                        if (tskMusic.IsFaulted)
                         {
                             PlayMusicFaultedResult(music, tskMusic);
                             return;
                         }
 
                         if (streamInfo == null)
-                            return;
+                        {
+                            music.IsLoadded = false;
+                            music.IsActiveMusic = true;
+                            music.IsBufferingMusic = false;
 
-                        MusicModelServicePlayer musicModel = new MusicModelServicePlayer()
+                            return;
+                        }
+
+                        ShowMerchandisingAlert(music);
+
+                        await _bottomPlayerViewModel.MusicStatusBottomModel.LoadMusicImageInfo(music);
+
+                        MusicModelServicePlayer musicModel = new MusicModelServicePlayer(music)
                         {
                             Id = music.Id,
                             Number = 0,
@@ -212,8 +277,15 @@ namespace TocaTudoPlayer.Xamarim
                             Image = _bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage
                         };
 
-                        _audioPlayer.Source(streamInfo.Url, music, musicModel);
-                    }).ConfigureAwait(false);
+                        _audioPlayer.Source(streamInfo.Url, music, _bottomPlayerViewModel.MusicStatusBottomModel, musicModel);
+                        IsInternetAvaiable = true;
+
+                        App.EventTracker.SendEvent("PlayMusic", new Dictionary<string, string>()
+                        {
+                            { "MusicName", music.MusicName },
+                            { "VideoId", music.VideoId }
+                        });
+                    });
                 }
             }
 
@@ -221,123 +293,206 @@ namespace TocaTudoPlayer.Xamarim
         }
         public async Task PlaySavedMusic(ICommonMusicModel music)
         {
-            AppHelper.MusicPlayerInterstitialWasShowed = false;
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
 
-            music.ShowMerchandisingAlert = _musicPlayerConfig.CheckIfMusicPlayedCountAchieveTotal(autoRebuild: true);
+            ShowMerchandisingAlert(music);
 
             if (music.IsSavedOnLocalDb)
             {
                 await _pclUserMusicLogic.LoadDb();
-                await PlayPauseMusicFromDb(music);
+                await PlayMusicFromDb(music);
+            }
+        }
+        public async Task PlaySavedMusic(ICommonMusicModel music, SearchMusicModel[] nextMusics, MusicPlayerConfig config)
+        {
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
+            _nextMusicPlayerConfig = config;
+
+            ShowMerchandisingAlert(music);
+
+            if (music.IsSavedOnLocalDb)
+            {
+                await _pclUserMusicLogic.LoadDb();
+                await PlayFromDb(music, nextMusics);
             }
         }
         public void PlayPauseMusic(ICommonMusicModel music)
         {
             if (_audioPlayer.IsPlaying)
             {
-                _audioPlayer.Pause();
-
-                music.IsActiveMusic = false;
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
                 music.IsPlaying = false;
             }
             else
             {
-                _audioPlayer.Play();
-
-                music.IsActiveMusic = true;
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Play());
                 music.IsPlaying = true;
             }
         }
+        public void Pause()
+        {
+            Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
+            if (MusicPlayingNow != null)
+            {
+                MusicPlayingNow.IsActiveMusic = false;
+                MusicPlayingNow.IsPlaying = false;
+            }
+        }
+        public void Stop()
+        {
+            Device.BeginInvokeOnMainThread(() => _audioPlayer.Stop());
+            if (MusicPlayingNow != null)
+            {
+                MusicPlayingNow.IsActiveMusic = false;
+                MusicPlayingNow.IsPlaying = false;
+            }
+
+            HideBottomPlayer();
+        }
         public void Stop(ICommonMusicModel music)
         {
-            _audioPlayer.Pause();
+            Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
 
             music.IsActiveMusic = false;
             music.IsPlaying = false;
 
             HideBottomPlayer();
-            StopBottomPlayer();
         }
-        public void PlayPauseMusic()
+        public void PlayPauseMusic(bool musicIsActiveOnPause = true)
         {
             if (_audioPlayer.IsPlaying)
             {
-                _audioPlayer.Pause();
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
+
+                if (MusicPlayingNow != null)
+                {
+                    MusicPlayingNow.IsActiveMusic = musicIsActiveOnPause;
+                    MusicPlayingNow.IsPlaying = !MusicPlayingNow.IsPlaying;
+                }
             }
             else
             {
-                _audioPlayer.Play();
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Play());
+
+                if (MusicPlayingNow != null)
+                {
+                    MusicPlayingNow.IsActiveMusic = true;
+                    MusicPlayingNow.IsPlaying = !MusicPlayingNow.IsPlaying;
+                }
+            }
+        }
+        public void PlayPauseMusic(PlaylistItem item, bool musicIsActiveOnPause = true)
+        {
+            if (_audioPlayer.IsPlaying)
+            {
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
+
+                item.IsActiveMusic = false;
+
+                if (MusicPlayingNow != null)
+                {
+                    MusicPlayingNow.IsActiveMusic = musicIsActiveOnPause;
+                    MusicPlayingNow.IsPlaying = !MusicPlayingNow.IsPlaying;
+                }
+            }
+            else
+            {
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Play());
+
+                item.IsActiveMusic = true;
+
+                if (MusicPlayingNow != null)
+                {
+                    MusicPlayingNow.IsActiveMusic = true;
+                    MusicPlayingNow.IsPlaying = !MusicPlayingNow.IsPlaying;
+                }
             }
         }
         public async Task StartDownloadMusic(ICommonMusicModel music)
         {
-            await music.StartDownloadMusic(_bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage);
+            await music.StartDownloadMusic(_bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage, _musicPlayedHistoryViewModel);
         }
         public void ActiveBottomPlayer()
         {
-            _bottomPlayerViewModel.ActiveBottomPlayer(this);
+            _bottomPlayerViewModel.ActiveBottomPlayer();
+        }
+        public void StopBottomPlayer(bool force = false)
+        {
+            _bottomPlayerViewModel.StopBottomPlayer(force);
         }
         public void HideBottomPlayer()
         {
             _bottomPlayerViewModel.BottomPlayerControlIsVisible = false;
         }
-        public void StopBottomPlayer()
-        {
-            _bottomPlayerViewModel.StopBottomPlayer();
-        }
 
         #region Private Methods
-        private async Task PlayPauseMusicFromDb(ICommonMusicModel musicPlayer)
+        private async Task PlayMusicFromDb(ICommonMusicModel music)
         {
-            if (musicPlayer.IsPlaying)
+            if (music.IsPlaying)
             {
-                _audioPlayer.Pause();
-                musicPlayer.IsPlaying = false;
-                musicPlayer.IsBufferingMusic = false;
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
+
+                music.IsPlaying = false;
+                music.IsBufferingMusic = false;
 
                 return;
             }
 
-            _bottomPlayerViewModel.StartBottomPlayer();
+            _bottomPlayerViewModel.Init(this);
+            _bottomPlayerViewModel.StartBottomPlayer(music.SearchType);
 
-            await PlayPauseFromDb(musicPlayer);
+            await PlayFromDb(music);
         }
-        private async Task PlayPauseMusicFromDb(ICommonMusicModel musicPlayer, SearchMusicModel[] nextMusics)
+        private async Task PlayFromDb(ICommonMusicModel music, SearchMusicModel[] nextMusics)
         {
-            if (musicPlayer.IsPlaying)
+            if (music.IsPlaying)
             {
-                _audioPlayer.Pause();
-                musicPlayer.IsPlaying = false;
-                musicPlayer.IsBufferingMusic = false;
+                Device.BeginInvokeOnMainThread(() => _audioPlayer.Pause());
+
+                music.IsPlaying = false;
+                music.IsBufferingMusic = false;
 
                 return;
             }
 
-            _bottomPlayerViewModel.StartBottomPlayer(nextMusics);
+            _bottomPlayerViewModel.Init(this);
+            _bottomPlayerViewModel.StartBottomPlayer(music.SearchType, nextMusics);
 
-            await PlayPauseFromDb(musicPlayer);
+            await PlayFromDb(music);
         }
-        private async Task PlayPauseFromDb(ICommonMusicModel musicPlayer)
+        private async Task PlayFromDb(ICommonMusicModel musicItem)
         {
-            await Task.Run(async () =>
+            (UserMusic, byte[]) music = await _pclUserMusicLogic.GetMusicById(musicItem.VideoId);
+
+            if (music.Item1 == null || music.Item2 == null)
             {
-                (UserMusic, byte[]) music = await _pclUserMusicLogic.GetMusicById(musicPlayer.VideoId);
+                musicItem.IsLoadded = false;
+                musicItem.IsActiveMusic = false;
 
-                musicPlayer.IsLoadded = false;
-                musicPlayer.IsActiveMusic = true;
-                musicPlayer.IsBufferingMusic = true;
-                musicPlayer.MusicModel = new MusicModel(music.Item1, music.Item2);
+                RaiseAppErrorEvent(AppResource.MusicIsNotPlayable);
+                return;
+            }
 
-                MusicModelServicePlayer musicModel = new MusicModelServicePlayer()
-                {
-                    Id = musicPlayer.Id,
-                    Number = 0,
-                    Music = musicPlayer.MusicName,
-                    Image = musicPlayer.MusicModel.MusicImage
-                };
+            musicItem.IsLoadded = false;
+            musicItem.IsActiveMusic = true;
+            musicItem.IsBufferingMusic = true;
+            musicItem.MusicModel = new MusicModel(music.Item1, music.Item2);
 
-                _audioPlayer.Source(music.Item2, musicPlayer, musicModel);
-            }).ConfigureAwait(false);
+            MusicModelServicePlayer musicModel = new MusicModelServicePlayer(musicItem)
+            {
+                Id = musicItem.Id,
+                Number = 0,
+                Music = musicItem.MusicName,
+                Image = musicItem.MusicModel.MusicImage
+            };
+
+            _audioPlayer.Source(music.Item2, musicItem, _bottomPlayerViewModel.MusicStatusBottomModel, musicModel);
+
+            App.EventTracker.SendEvent("PlayFromDb", new Dictionary<string, string>()
+            {
+                { "MusicName", musicItem.MusicName },
+                { "VideoId", musicItem.VideoId }
+            });
         }
         private async Task OnlyPlayMusic(ICommonMusicModel music)
         {
@@ -347,7 +502,7 @@ namespace TocaTudoPlayer.Xamarim
             music.IsActiveMusic = true;
             music.IsBufferingMusic = true;
 
-            AppHelper.MusicPlayerInterstitialWasShowed = false;
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
 
             await _ytClient.Videos.Streams.GetManifestAsync(music.VideoId)
                                           .AsTask()
@@ -359,14 +514,43 @@ namespace TocaTudoPlayer.Xamarim
                                               }
 
                                               ytManifest = tsk.Result;
-                                          })
-                                          .ConfigureAwait(false);
+                                          });
 
             AudioOnlyStreamInfo streamInfo = ytManifest.GetAudioOnlyStreams()
                                                        .Where(audio => !string.Equals(audio.Container.ToString(), "webm", StringComparison.OrdinalIgnoreCase))
                                                        .FirstOrDefault();
 
-            _audioPlayer.Source(streamInfo.Url, music);
+            _audioPlayer.Source(streamInfo.Url, music, _bottomPlayerViewModel.MusicStatusBottomModel);
+        }
+        private async Task OnlyPlayMusic(string videoId)
+        {
+            StreamManifest ytManifest = null;
+
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
+
+            await _ytClient.Videos.Streams.GetManifestAsync(videoId)
+                                          .AsTask()
+                                          .ContinueWith((tsk) =>
+                                          {
+                                              if (tsk.IsFaulted)
+                                              {
+                                                  PlayAlbumFaultedResult(tsk);
+                                              }
+
+                                              ytManifest = tsk.Result;
+                                          });
+
+            AudioOnlyStreamInfo streamInfo = ytManifest.GetAudioOnlyStreams()
+                                                       .Where(audio => !string.Equals(audio.Container.ToString(), "webm", StringComparison.OrdinalIgnoreCase))
+                                                       .FirstOrDefault();
+
+            _audioPlayer.Source(streamInfo.Url, videoId);
+        }
+        private void ShowMerchandisingAlert(ICommonMusicModel music)
+        {
+            music.ShowMerchandisingAlert = _musicPlayerConfig.CheckIfMusicPlayedCountAchieveTotal(autoRebuild: true);
+            if (music.ShowMerchandisingAlert)
+                HideStatusBarPlayerControls();
         }
         private void PlayMusicFaultedResult(ICommonMusicModel music, Task<StreamManifest> tsk)
         {
@@ -377,51 +561,80 @@ namespace TocaTudoPlayer.Xamarim
             _bottomPlayerViewModel.BottomPlayerControlIsVisible = false;
             _bottomPlayerViewModel.StopBottomPlayer();
 
-            if (tsk.Exception.Message.IndexOf("410") >= 0)
+            if (tsk?.Exception?.Message?.IndexOf("410") >= 0 || tsk?.Exception?.Message?.IndexOf("is not", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                RaiseAppErrorEvent(0, AppResource.MusicIsNotPlayable);
+                RaiseAppErrorEvent(AppResource.MusicIsNotPlayable);
+            }
+            else
+            {
+                RaiseAppErrorEvent(AppResource.MusicUnableToPlay);
             }
         }
-        private async void AudioPlayer_PlayerReady(ICommonMusicModel music)
+        private void PlayAlbumFaultedResult(Task<StreamManifest> tsk)
         {
-            if (music != null)
+            if (tsk?.Exception?.Message?.IndexOf("410") >= 0 || tsk?.Exception?.Message?.IndexOf("is not", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                if (music.IsActiveMusic)
+                RaiseAppErrorEvent(AppResource.MusicIsNotPlayable);
+            }
+            else
+            {
+                RaiseAppErrorEvent(AppResource.MusicUnableToPlay);
+            }
+        }
+        private void AudioPlayer_PlayerReady(object sender, ICommonMusicModel music)
+        {
+            Task.Run(async () =>
+            {
+                if (music != null)
                 {
-                    if (music.IsLoadded)
-                        return;
-
-                    if (music.SearchType != MusicSearchType.SearchSavedMusic)
+                    if (music.IsActiveMusic)
                     {
-                        if (!music.IsHistoryPlayedSavedOnLocalDb)
+                        if (music.SearchType != MusicSearchType.SearchMusicAlbumHistory)
+                        {
+                            if (_musicPlayedHistoricIsSaved != null)
+                                _musicPlayedHistoricIsSaved.RaiseEvent(sender, music, nameof(MusicPlayedHistoricIsSaved));
+                        }
+
+                        if (music.SearchType != MusicSearchType.SearchSavedMusic)
                         {
                             await _musicPlayedHistoryViewModel.SaveLocalHistory(music, _bottomPlayerViewModel.MusicStatusBottomModel.ByteMusicImage);
-                            
-                            if (music.SearchType == MusicSearchType.SearchMusicAlbumHistory)
-                            {
-                                if (_musicPlayedHistoricIsSaved != null)
-                                    _musicPlayedHistoricIsSaved(music);
-                            }
                         }
                     }
                 }
-            }
+            }).OnError("SaveLocalHistory", () =>
+            {
+                RaiseDefaultAppErrorEvent();
+            }).ConfigureAwait(false);
         }
-        private async void AudioPlayer_PlayerInvalidUri(ICommonMusicModel obj)
+        private async void AudioPlayer_PlayerAlbumInvalidUri(object sender, string videoId)
         {
-            await OnlyPlayMusic(obj);
+            await OnlyPlayMusic(videoId).OnError(nameof(CommonMusicPlayerViewModel), () => RaiseAppErrorEvent(AppResource.AppDefaultError));
+
+            App.EventTracker.SendEvent("PlayerAlbumInvalidUri", new Dictionary<string, string>()
+            {
+                { "VideoId", videoId },
+            });
         }
-        private async void BottomPlayerViewModel_NextMusicEvent(SearchMusicModel obj)
+        private async void AudioPlayer_PlayerMusicInvalidUri(object sender, ICommonMusicModel obj)
+        {
+            await OnlyPlayMusic(obj).OnError(nameof(CommonMusicPlayerViewModel), () => RaiseAppErrorEvent(AppResource.AppDefaultError));
+
+            App.EventTracker.SendEvent("PlayerMusicInvalidUri", new Dictionary<string, string>()
+            {
+                { "VideoId", obj.VideoId },
+            });
+        }
+        private async void BottomPlayerViewModel_NextMusicEvent(object sender, SearchMusicModel obj)
         {
             obj.IsSelected = true;
-            obj.ShowMerchandisingAlert = _nextMusicPlayerConfig?.CheckIfMusicPlayedCountAchieveTotal(autoRebuild: true) ?? false;
+            ShowMerchandisingAlert(obj);
 
             await PlayMusic(obj, CancellationToken.None);
         }
-        private void AudioPlayer_PlayerLosedAudioFocus()
+        private void AudioPlayer_PlayerLosedAudioFocus(object sender, EventArgs e)
         {
             if (_playerLosedAudioFocus != null)
-                _playerLosedAudioFocus();
+                _playerLosedAudioFocus.RaiseEvent(this, null, nameof(PlayerLosedAudioFocus));
         }
 
         #endregion

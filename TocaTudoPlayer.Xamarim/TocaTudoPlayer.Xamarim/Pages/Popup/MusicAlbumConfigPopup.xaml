@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xct:Popup xmlns:xct="http://xamarin.com/schemas/2020/toolkit" 
+           xmlns="http://xamarin.com/schemas/2014/forms"
+           xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+           xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+           xmlns:resource="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
+           Size="350, 80"
+           x:Class="TocaTudoPlayer.Xamarim.Pages.MusicAlbumConfigPopup">
+    <Grid RowSpacing="1" ColumnSpacing="0" Padding="5" x:DataType="local:CommonMusicPageViewModel">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="25"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Label Text="{x:Static resource:AppResource.ConfigurationLabel}" Grid.Row="0" FontAttributes="Bold" TextColor="Black" LineBreakMode="TailTruncation"/>
+        <Grid Grid.Row="1" HeightRequest="60" ColumnSpacing="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="80"/>
+            </Grid.ColumnDefinitions>
+            <Picker x:Name="pkAlbumSelect" Grid.Column="0" Title="{x:Static resource:AppResource.PopupAlbumSelect}" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand" FontSize="14" ItemsSource="{Binding AlbumMusicSavedSelectCollection}" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding .}"/>
+            <Button Text="{x:Static resource:AppResource.PopupMusicDelete}" Grid.Column="1" HorizontalOptions="End" TextTransform="Lowercase" Clicked="DeleteAlbumButton_Clicked"/>
+        </Grid>
+    </Grid>
+</xct:Popup>

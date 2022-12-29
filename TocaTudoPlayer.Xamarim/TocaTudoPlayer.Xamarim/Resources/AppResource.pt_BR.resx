@@ -132,17 +132,50 @@
   <data name="AlbumIsNotPlayable" xml:space="preserve">
     <value>Não é possível tocar este álbum =(</value>
   </data>
+  <data name="AlbumPlayingLabel" xml:space="preserve">
+    <value>Álbum tocando!</value>
+  </data>
   <data name="AlbumPlayingOfflineLabel" xml:space="preserve">
     <value>tocando offline!</value>
+  </data>
+  <data name="AllTextLabel" xml:space="preserve">
+    <value>Todas</value>
+  </data>
+  <data name="AppDefaultError" xml:space="preserve">
+    <value>Ocorreu um erro =(</value>
   </data>
   <data name="AppName" xml:space="preserve">
     <value>TocaTudo</value>
   </data>
+  <data name="CancelLabel" xml:space="preserve">
+    <value>cancelar</value>
+  </data>
+  <data name="ConfigurationLabel" xml:space="preserve">
+    <value>Configuração</value>
+  </data>
+  <data name="ConfigurationSmallLabel" xml:space="preserve">
+    <value>Config</value>
+  </data>
+  <data name="DeletingLabel" xml:space="preserve">
+    <value>Eliminando</value>
+  </data>
+  <data name="InsertingLagel" xml:space="preserve">
+    <value>Adicionando</value>
+  </data>
   <data name="MusicAlbumButton" xml:space="preserve">
-    <value>álbum</value>
+    <value>Álbum</value>
+  </data>
+  <data name="MusicCouldNotDownload" xml:space="preserve">
+    <value>Não é possível baixar =(</value>
+  </data>
+  <data name="MusicCouldNotDownloadTryAgain" xml:space="preserve">
+    <value>Não foi possível baixar música, tente novamente =)</value>
   </data>
   <data name="MusicDownloadedLabel" xml:space="preserve">
     <value>música baixada!</value>
+  </data>
+  <data name="MusicHistoryRecentlyPlayed" xml:space="preserve">
+    <value>Recentes</value>
   </data>
   <data name="MusicIsNotPlayable" xml:space="preserve">
     <value>Não é possível tocar está música =(</value>
@@ -153,7 +186,70 @@
   <data name="MusicSavedButton" xml:space="preserve">
     <value>salvos</value>
   </data>
+  <data name="MusicSavedEmptyRegister" xml:space="preserve">
+    <value>Não há músicas salvas!</value>
+  </data>
   <data name="MusicSearchButton" xml:space="preserve">
     <value>buscar</value>
+  </data>
+  <data name="MusicUnableToPlay" xml:space="preserve">
+    <value>Não foi é possível tocar está música =(</value>
+  </data>
+  <data name="PlayStoreNewVersion" xml:space="preserve">
+    <value>Existe uma nova versão do app na Play Store.</value>
+  </data>
+  <data name="PlayStoreNewVersionAlert" xml:space="preserve">
+    <value>Atenção!</value>
+  </data>
+  <data name="PopupAlbumNameLabel" xml:space="preserve">
+    <value>Nome Álbum</value>
+  </data>
+  <data name="PopupAlbumSelect" xml:space="preserve">
+    <value>Selecione Álbum</value>
+  </data>
+  <data name="PopupAlertAlbumNameInsert" xml:space="preserve">
+    <value>Insira o nome do álbum!</value>
+  </data>
+  <data name="PopupAlertDeleteAlbum" xml:space="preserve">
+    <value>Deletar álbum ?</value>
+  </data>
+  <data name="PopupDeleteAlbumAlert" xml:space="preserve">
+    <value>Há # música(s) neste álbum "##", deseja remover o álbum ?</value>
+  </data>
+  <data name="PopupDeleteMusicAlert" xml:space="preserve">
+    <value>Deletar música "#" ?</value>
+  </data>
+  <data name="PopupDeleteMusicFromAlbum" xml:space="preserve">
+    <value>Remover música do álbum "#" ?</value>
+  </data>
+  <data name="PopupMerchanLoading" xml:space="preserve">
+    <value>Comercial...</value>
+  </data>
+  <data name="PopupMusicDelete" xml:space="preserve">
+    <value>Excluir</value>
+  </data>
+  <data name="PopupMusicEdit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="PopupMusicSave" xml:space="preserve">
+    <value>Salvar</value>
+  </data>
+  <data name="PopupMusicSaved" xml:space="preserve">
+    <value>Salvo!</value>
+  </data>
+  <data name="PopupMusicSavedInAlbum" xml:space="preserve">
+    <value>Salvo em Álbum! -</value>
+  </data>
+  <data name="PopupMusicStart" xml:space="preserve">
+    <value>Iniciar</value>
+  </data>
+  <data name="StartForegroundServiceDefaultExceptionMsg" xml:space="preserve">
+    <value>Não foi possível tocar =(</value>
+  </data>
+  <data name="TryAgainLabel" xml:space="preserve">
+    <value>Tente novamente!</value>
+  </data>
+  <data name="UpdatingLagel" xml:space="preserve">
+    <value>Atualizando</value>
   </data>
 </root>

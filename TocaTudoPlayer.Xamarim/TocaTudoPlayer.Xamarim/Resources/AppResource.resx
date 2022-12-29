@@ -132,17 +132,50 @@
   <data name="AlbumIsNotPlayable" xml:space="preserve">
     <value>This album is not playable =(</value>
   </data>
+  <data name="AlbumPlayingLabel" xml:space="preserve">
+    <value>Album playing!</value>
+  </data>
   <data name="AlbumPlayingOfflineLabel" xml:space="preserve">
     <value>offline!</value>
   </data>
+  <data name="AllTextLabel" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="AppDefaultError" xml:space="preserve">
+    <value>An error has occurred =(</value>
+  </data>
   <data name="AppName" xml:space="preserve">
-    <value>PlayEverWish</value>
+    <value>PlaysEverWish</value>
+  </data>
+  <data name="CancelLabel" xml:space="preserve">
+    <value>cancel</value>
+  </data>
+  <data name="ConfigurationLabel" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="ConfigurationSmallLabel" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="DeletingLabel" xml:space="preserve">
+    <value>Deleting</value>
+  </data>
+  <data name="InsertingLagel" xml:space="preserve">
+    <value>Including</value>
   </data>
   <data name="MusicAlbumButton" xml:space="preserve">
-    <value>album</value>
+    <value>Album</value>
+  </data>
+  <data name="MusicCouldNotDownload" xml:space="preserve">
+    <value>Could not download music</value>
+  </data>
+  <data name="MusicCouldNotDownloadTryAgain" xml:space="preserve">
+    <value>Could not download music please try again =)</value>
   </data>
   <data name="MusicDownloadedLabel" xml:space="preserve">
     <value>downloaded!</value>
+  </data>
+  <data name="MusicHistoryRecentlyPlayed" xml:space="preserve">
+    <value>Played</value>
   </data>
   <data name="MusicIsNotPlayable" xml:space="preserve">
     <value>This music is not playable =(</value>
@@ -153,7 +186,70 @@
   <data name="MusicSavedButton" xml:space="preserve">
     <value>saved</value>
   </data>
+  <data name="MusicSavedEmptyRegister" xml:space="preserve">
+    <value>There is not exists saved musics!</value>
+  </data>
   <data name="MusicSearchButton" xml:space="preserve">
     <value>search</value>
+  </data>
+  <data name="MusicUnableToPlay" xml:space="preserve">
+    <value>Unable to play this music =(</value>
+  </data>
+  <data name="PlayStoreNewVersion" xml:space="preserve">
+    <value>There is on Play Store a new version from the app.</value>
+  </data>
+  <data name="PlayStoreNewVersionAlert" xml:space="preserve">
+    <value>Please!</value>
+  </data>
+  <data name="PopupAlbumNameLabel" xml:space="preserve">
+    <value>Album Name</value>
+  </data>
+  <data name="PopupAlbumSelect" xml:space="preserve">
+    <value>Select Album</value>
+  </data>
+  <data name="PopupAlertAlbumNameInsert" xml:space="preserve">
+    <value>Insert album name is required!</value>
+  </data>
+  <data name="PopupAlertDeleteAlbum" xml:space="preserve">
+    <value>Do delete album ?</value>
+  </data>
+  <data name="PopupDeleteAlbumAlert" xml:space="preserve">
+    <value>There is # music(s) the album "##", do you wish to remove ?</value>
+  </data>
+  <data name="PopupDeleteMusicAlert" xml:space="preserve">
+    <value>Do delete stored music "#" ?</value>
+  </data>
+  <data name="PopupDeleteMusicFromAlbum" xml:space="preserve">
+    <value>Do remove the music "#" from album ?</value>
+  </data>
+  <data name="PopupMerchanLoading" xml:space="preserve">
+    <value>Ads Loading...</value>
+  </data>
+  <data name="PopupMusicDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="PopupMusicEdit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="PopupMusicSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="PopupMusicSaved" xml:space="preserve">
+    <value>Saved!</value>
+  </data>
+  <data name="PopupMusicSavedInAlbum" xml:space="preserve">
+    <value>Saved in Album! - </value>
+  </data>
+  <data name="PopupMusicStart" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="StartForegroundServiceDefaultExceptionMsg" xml:space="preserve">
+    <value>Could not be played =(</value>
+  </data>
+  <data name="TryAgainLabel" xml:space="preserve">
+    <value>Try again!</value>
+  </data>
+  <data name="UpdatingLagel" xml:space="preserve">
+    <value>Updating</value>
   </data>
 </root>

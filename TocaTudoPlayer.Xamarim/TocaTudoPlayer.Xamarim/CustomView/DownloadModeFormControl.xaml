@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<StackLayout xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+             xmlns:resource="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
+             x:DataType="local:MusicModelBase"
+             x:Class="TocaTudoPlayer.Xamarim.DownloadModeFormControl">
+    <StackLayout Spacing="2">
+        <StackLayout Orientation="Horizontal" Spacing="1">
+            <Label FontAttributes="Bold" FontSize="12" IsVisible="{Binding MusicAlbumPopupModel.AlbumModeIsVisible}">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="{x:Static resource:AppResource.MusicAlbumButton}"/>
+                        <Span Text=" - "/>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+            <Label Text="{Binding MusicAlbumPopupModel.AlbumMusicSavedSelected.Value}" FontAttributes="Bold" TextColor="Black" FontSize="12" IsVisible="{Binding MusicAlbumPopupModel.AlbumModeIsVisible}"/>
+            <Label TextColor="{Binding TextColorMusic}" VerticalTextAlignment="Start" FontSize="12" IsVisible="{Binding MusicAlbumPopupModel.IsSavedMusicDownloadModelVisible}">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text=" - "/>
+                        <Span Text="{Binding Download.PercentDesc}"/>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+            <Image HorizontalOptions="EndAndExpand" Opacity=".5" Margin="1,0" IsVisible="{Binding IsSavedOnLocalDb}">
+                <Image.Source>
+                    <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowCircleDown}" Size="12" Color="{Binding TextColorMusic}"/>
+                </Image.Source>
+            </Image>
+            <Label HorizontalOptions="End" Opacity=".7" Text="{x:Static resource:AppResource.PopupMusicSaved}" TextColor="{Binding TextColorMusic}" FontSize="11" IsVisible="{Binding IsSavedOnLocalDb}"/>
+        </StackLayout>
+    </StackLayout>
+</StackLayout>

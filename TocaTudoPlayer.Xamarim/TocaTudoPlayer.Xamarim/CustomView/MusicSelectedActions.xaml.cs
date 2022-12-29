@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 using Xamarin.Forms;
-using Xamarin.Forms.CustomControls.Entries;
 using Xamarin.Forms.Xaml;
 
 namespace TocaTudoPlayer.Xamarim
@@ -9,20 +8,18 @@ namespace TocaTudoPlayer.Xamarim
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class MusicSelectedActions : Frame
     {
-        public static readonly BindableProperty ViewModelProperty = BindableProperty.Create(propertyName: nameof(ViewModel), returnType: typeof(IMusicPageViewModel), declaringType: typeof(IMusicPageViewModel));
-        private Button _btnEditAlbum;
-        private Button _btnDownloadAlbum;
+        public static readonly BindableProperty ViewModelProperty = BindableProperty.Create(propertyName: nameof(ViewModel), returnType: typeof(MusicPageViewModel), declaringType: typeof(MusicPageViewModel));
         public MusicSelectedActions()
         {
             InitializeComponent();
 
             BindingContext = this;
         }
-        public IMusicPageViewModel ViewModel
+        public MusicPageViewModel ViewModel
         {
             get
             {
-                return (IMusicPageViewModel)GetValue(ViewModelProperty);
+                return (MusicPageViewModel)GetValue(ViewModelProperty);
             }
             set
             {
@@ -31,14 +28,16 @@ namespace TocaTudoPlayer.Xamarim
         }
         private void ViewCellPlusMusicPlaylistAddAlbum_Clicked(object sender, EventArgs e)
         {
-            SearchMusicModel musicModel = (SearchMusicModel)((Button)sender).CommandParameter;
-
-            musicModel.UpdateMusicUtilsAddAlbumIconAndForm();
+            MusicAlbumDialogDataModel popupModel = (MusicAlbumDialogDataModel)((Button)sender).CommandParameter;
+            popupModel.UpdateAddAlbumIconAndForm();
         }
         private async void ViewCellPlusMusicPlaylistNewAlbumName_Clicked(object sender, EventArgs e)
         {
+            if (string.IsNullOrEmpty(txtAlbumName.Text))
+                return;
+
             ImageButton imgAddAlbum = (ImageButton)sender;
-            FloatingLabelEntry labelAddAlbum = (FloatingLabelEntry)((StackLayout)imgAddAlbum.Parent).Children[0];
+            //FloatingLabelEntry labelAddAlbum = (FloatingLabelEntry)((StackLayout)imgAddAlbum.Parent).Children[0];
             SearchMusicModel sMusicModel = (SearchMusicModel)imgAddAlbum.CommandParameter;
 
             string albumName = Regex.Replace(txtAlbumName.Text, @"(^\w)|(\s\w)", m => m.Value.ToUpper());
@@ -46,7 +45,7 @@ namespace TocaTudoPlayer.Xamarim
 
             if (!musicAlbumExists)
             {
-                await ViewModel.CommonMusicPageViewModel.InsertMusicAlbumPlaylistSelected(albumName, sMusicModel);
+                await ViewModel.CommonMusicPageViewModel.InsertOrUpdateMusicAlbumPlaylistSelected(albumName, sMusicModel);
             }
         }
         private void ViewCellPlusMusicPlaylistOpenCloseAddAlbum_Clicked(object sender, EventArgs e)
@@ -59,16 +58,16 @@ namespace TocaTudoPlayer.Xamarim
                 btnOpenCloseAlbum.FontAttributes = FontAttributes.Bold;
                 btnOpenCloseAlbum.ImageSource = new FontImageSource() { Glyph = TocaTudoPlayer.Xamarim.Icon.MinusCircle, Size = 18, Color = Color.Red, FontFamily = "FontAwesomeBold" };
 
-                sMusicModel.MusicDetailsSelectAlbumIsVisible = false;
-                sMusicModel.MusicDetailsAddAlbumIsVisible = true;
+                sMusicModel.MusicAlbumPopupModel.SelectAlbumIsVisible = false;
+                sMusicModel.MusicAlbumPopupModel.AddAlbumIsVisible = true;
             }
             else
             {
                 btnOpenCloseAlbum.FontAttributes = FontAttributes.None;
                 btnOpenCloseAlbum.ImageSource = new FontImageSource() { Glyph = TocaTudoPlayer.Xamarim.Icon.PlusCircle, Size = 18, Color = Color.Green, FontFamily = "FontAwesomeBold" };
 
-                sMusicModel.MusicDetailsSelectAlbumIsVisible = true;
-                sMusicModel.MusicDetailsAddAlbumIsVisible = false;
+                sMusicModel.MusicAlbumPopupModel.SelectAlbumIsVisible = true;
+                sMusicModel.MusicAlbumPopupModel.AddAlbumIsVisible = false;
             }
         }
         private void ViewCellPlusMusicPlaylistEditAlbum_Clicked(object sender, EventArgs e)
@@ -78,7 +77,7 @@ namespace TocaTudoPlayer.Xamarim
 
             Button btnDownloadAlbum = (Button)((StackLayout)btnEditAlbum.Parent).Children[1];
 
-            if (!musicModel.MusicAlbumEditFormIsVisible)
+            if (!musicModel.MusicAlbumPopupModel.EditFormIsVisible)
             {
                 btnEditAlbum.FontAttributes = FontAttributes.Bold;
                 btnEditAlbum.Opacity = 1;
@@ -86,7 +85,7 @@ namespace TocaTudoPlayer.Xamarim
                 btnDownloadAlbum.FontAttributes = FontAttributes.None;
                 btnDownloadAlbum.Opacity = 0.7;
 
-                musicModel.MusicAlbumEditFormIsVisible = true;
+                musicModel.MusicAlbumPopupModel.EditFormIsVisible = true;
                 musicModel.CollectionMusicOptionSize = 140;
             }
             else
@@ -96,7 +95,7 @@ namespace TocaTudoPlayer.Xamarim
                 btnDownloadAlbum.FontAttributes = FontAttributes.Bold;
                 btnDownloadAlbum.Opacity = 1;
 
-                musicModel.MusicAlbumEditFormIsVisible = false;
+                musicModel.MusicAlbumPopupModel.EditFormIsVisible = false;
                 musicModel.CollectionMusicOptionSize = 90;
             }
         }
@@ -107,9 +106,9 @@ namespace TocaTudoPlayer.Xamarim
 
             Button btnEditAlbum = (Button)((StackLayout)btnDownloadAlbum.Parent).Children[0];
 
-            musicModel.MusicAlbumEditFormIsVisible = false;
+            musicModel.MusicAlbumPopupModel.EditFormIsVisible = false;
 
-            if (!musicModel.MusicDetailsFormDownloadIsVisible)
+            if (!musicModel.MusicAlbumPopupModel.FormDownloadIsVisible)
             {
                 btnDownloadAlbum.FontAttributes = FontAttributes.Bold;
                 btnDownloadAlbum.Opacity = 1;
@@ -117,7 +116,7 @@ namespace TocaTudoPlayer.Xamarim
                 btnEditAlbum.FontAttributes = FontAttributes.None;
                 btnEditAlbum.Opacity = 0.7;
 
-                musicModel.MusicDetailsFormDownloadIsVisible = true;
+                musicModel.MusicAlbumPopupModel.FormDownloadIsVisible = true;
                 musicModel.CollectionMusicOptionSize = 138;
             }
             else
@@ -127,34 +126,34 @@ namespace TocaTudoPlayer.Xamarim
                 btnEditAlbum.FontAttributes = FontAttributes.Bold;
                 btnEditAlbum.Opacity = 1;
 
-                musicModel.MusicDetailsFormDownloadIsVisible = false;
+                musicModel.MusicAlbumPopupModel.FormDownloadIsVisible = false;
                 musicModel.CollectionMusicOptionSize = 92;
             }
         }
         private void ViewCellPlusMusicPlaylistUpdateAlbumName_Clicked(object sender, EventArgs e)
         {
             SearchMusicModel musicModel = (SearchMusicModel)((Button)sender).CommandParameter;
-            //ViewModel.UpdateMusicAlbumPlaylistSelected(musicModel.AlbumMusicSavedSelected.Id, musicModel.AlbumMusicSavedSelected.Value, musicModel);
-            if(musicModel.AlbumMusicSavedSelected != null)
-                ViewModel.CommonMusicPageViewModel.InsertMusicAlbumPlaylistSelected(musicModel.AlbumMusicSavedSelected.Value, musicModel);
+
+            if (musicModel.MusicAlbumPopupModel.AlbumMusicSavedSelected != null)
+                ViewModel.CommonMusicPageViewModel.InsertOrUpdateMusicAlbumPlaylistSelected(musicModel.MusicAlbumPopupModel.AlbumMusicSavedSelected.Value, musicModel);
         }
         private void ViewCellPlusMusicPlaylistSelectAlbumBack_Clicked(object sender, EventArgs e)
         {
             SearchMusicModel musicModel = (SearchMusicModel)((ImageButton)sender).CommandParameter;
 
-            musicModel.MusicDetailsSelectAlbumIsVisible = true;
-            musicModel.MusicDetailsAddAlbumIsVisible = false;
+            musicModel.MusicAlbumPopupModel.SelectAlbumIsVisible = true;
+            musicModel.MusicAlbumPopupModel.AddAlbumIsVisible = false;
         }
         private void ViewCellPlusMusicPlaylistAddAlbumName_Clicked(object sender, EventArgs e)
         {
             SearchMusicModel musicModel = (SearchMusicModel)((Button)sender).CommandParameter;
-            musicModel.MusicDetailsSelectAlbumIsVisible = false;
-            musicModel.MusicDetailsAddAlbumIsVisible = true;
+            musicModel.MusicAlbumPopupModel.SelectAlbumIsVisible = false;
+            musicModel.MusicAlbumPopupModel.AddAlbumIsVisible = true;
         }
         private void ViewCellPlusMusicPlaylistDeleteAlbumName_Clicked(object sender, EventArgs e)
         {
             SearchMusicModel musicModel = (SearchMusicModel)((Button)sender).CommandParameter;
-            ViewModel.CommonMusicPageViewModel.DeleteMusicAlbumPlaylistSelected(musicModel);
+            ViewModel.CommonMusicPageViewModel.DeleteMusicFromAlbumPlaylist(musicModel);
         }
     }
 }

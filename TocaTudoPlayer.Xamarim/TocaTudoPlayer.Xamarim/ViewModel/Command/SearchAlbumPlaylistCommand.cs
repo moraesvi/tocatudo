@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Xamarin.CommunityToolkit.ObjectModel;
 
 namespace TocaTudoPlayer.Xamarim
 {
-    public class SearchAlbumPlaylistCommand : ICommand
+    public class SearchAlbumPlaylistCommand : IAsyncCommand
     {
-        private readonly IAlbumPageViewModel _vm;
+        private readonly AlbumPageViewModel _vm;
+        public bool IsExecuting => throw new NotImplementedException();
+        public bool AllowsMultipleExecutions => throw new NotImplementedException();
+
         public event EventHandler CanExecuteChanged;
-        public SearchAlbumPlaylistCommand(IAlbumPageViewModel vm)
+        public SearchAlbumPlaylistCommand(AlbumPageViewModel vm)
         {
             _vm = vm;
         }
@@ -24,6 +29,14 @@ namespace TocaTudoPlayer.Xamarim
         public async void Execute(object parameter)
         {
             await _vm.AlbumPlaylistSearch();
+        }
+        public async Task ExecuteAsync()
+        {
+            await _vm.AlbumPlaylistSearch();
+        }
+        public void RaiseCanExecuteChanged()
+        {
+            throw new NotImplementedException();
         }
     }
 }

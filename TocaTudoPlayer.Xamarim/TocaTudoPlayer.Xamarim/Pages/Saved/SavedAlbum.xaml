@@ -8,7 +8,7 @@
              xmlns:uc_local="clr-namespace:TocaTudoPlayer.Xamarim"
              x:Class="TocaTudoPlayer.Xamarim.Pages.SavedAlbum"
              NavigationPage.HasNavigationBar="False"
-             x:DataType="local:IAlbumSavedPageViewModel">
+             x:DataType="local:AlbumSavedPageViewModel">
     <ContentPage.Content>
         <Grid RowSpacing="0">
             <Grid.Background>
@@ -18,12 +18,12 @@
                 </LinearGradientBrush>
             </Grid.Background>
             <Grid.RowDefinitions>
-                <RowDefinition Height="45"/>
+                <!--<RowDefinition Height="45"/>-->
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <uc_local:InternetConnControl/>
-            <Grid Grid.Row="0" RowSpacing="0" ColumnSpacing="0">
+            <!--<Grid Grid.Row="0" RowSpacing="0" ColumnSpacing="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -37,37 +37,7 @@
                         </Button.ImageSource>
                     </Button>
                 </Grid>
-                <Grid Grid.Column="2" HorizontalOptions="FillAndExpand" RowSpacing="0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="17"/>
-                        <RowDefinition Height="30"/>
-                        <RowDefinition Height="15"/>
-                    </Grid.RowDefinitions>
-                    <Label Text="Álbum tocando!" Grid.Row="0" Padding="2, 0" FontSize="12" TextColor="White" FontAttributes="Bold">
-                        <Label.Background>
-                            <LinearGradientBrush>
-                                <GradientStop Color="#D4420C" Offset="0.5" />
-                                <GradientStop Color="#F3A283" Offset="1.0" />
-                            </LinearGradientBrush>
-                        </Label.Background>
-                    </Label>
-                    <Image Source="{Binding CommonPageViewModel.AlbumImage}" Aspect="AspectFill" Grid.Row="1"/>
-                    <sh:Shadows CornerRadius="20" Shades="{sh:SingleShade Offset='0, 4', Opacity=0.7, Color=White}" Grid.ColumnSpan="1" Grid.Row="1">
-                        <Button WidthRequest="25" HeightRequest="25" CornerRadius="20" Margin="4" HorizontalOptions="EndAndExpand" VerticalOptions="CenterAndExpand" Clicked="AlbumBackButton_Clicked" CommandParameter="{Binding .}" >
-                            <Button.Background>
-                                <LinearGradientBrush>
-                                    <GradientStop Color="#D4420C" Offset="0.5" />
-                                    <GradientStop Color="#F3A283" Offset="1.0" />
-                                </LinearGradientBrush>
-                            </Button.Background>
-                            <Button.ImageSource>
-                                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowRight}" Size="15" Color="Black"/>
-                            </Button.ImageSource>
-                        </Button>
-                    </sh:Shadows>
-                    <Label Text="{Binding CommonPageViewModel.AlbumName}" FontAttributes="Bold" Grid.Row="2" Margin="0,-2" FontSize="13" LineBreakMode="TailTruncation"/>
-                </Grid>
-            </Grid>
+            </Grid>-->
             <ActivityIndicator x:Name="actInd" Grid.RowSpan="2" IsRunning="{Binding IsSearching}" IsVisible="{Binding IsSearching}" VerticalOptions="CenterAndExpand"/>
             <Grid x:Name="gAlbumPlaylist" Margin="7,0" Grid.Row="1" RowSpacing="1">
                 <Grid.RowDefinitions>
@@ -192,14 +162,11 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </Grid>
-            <StackLayout Grid.Row="2" VerticalOptions="EndAndExpand">
+            <StackLayout x:Name="stlBottom" Grid.Row="1" VerticalOptions="EndAndExpand">
                 <Grid RowSpacing="0" Margin="0,5,0,0">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="60"/>
                     </Grid.RowDefinitions>
-                    <controls:MTAdView x:Name="myAds" Grid.Row="0"/>
-                    <uc_local:MusicBottomPlayerControl x:Name="ucPlayerControl" Grid.Row="1"/>
                 </Grid>
             </StackLayout>
         </Grid>

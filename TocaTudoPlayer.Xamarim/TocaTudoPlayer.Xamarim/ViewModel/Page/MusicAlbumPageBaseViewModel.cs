@@ -1,95 +1,92 @@
 ﻿using MarcTron.Plugin;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Text;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xamarin.Forms;
-using YoutubeParse.ExplodeV2;
+using Xamarin.Forms.Internals;
+using YoutubeExplode;
 
 namespace TocaTudoPlayer.Xamarim
 {
-    public abstract class MusicAlbumPageBaseViewModel : BaseViewModel, IMusicAlbumPageBaseViewModel
+    public abstract class MusicAlbumPageBaseViewModel : BaseViewModel
     {
         private readonly IDbLogic _dbLogic;
+        private readonly IPCLUserAlbumLogic _pclUserAlbumLogic;
         private readonly IPCLUserMusicLogic _pclUserMusicLogic;
-        private readonly ICommonFormDownloadViewModel _formDownloadViewModel;
+        private readonly CommonPageViewModel _commonPageViewModel;
+        private readonly CommonMusicPageViewModel _commonMusicPageViewModel;
+        private readonly CommonMusicPlayerViewModel _musicPlayerViewModel;
+        private readonly CommonFormDownloadViewModel _formDownloadViewModel;
         private readonly ITocaTudoApi _tocaTudoApi;
+        private readonly IAudio _audioPlayer;
         private readonly YoutubeClient _ytClient;
+        private ObservableCollection<SearchMusicModel> _musicPlaylist;
 
+        private bool _isReady;
         private bool _isSearching;
+        private bool _playlistIsVisible;
 
-        protected event Action _playerReady;
-        protected event Action _showInterstitial;
-        protected event Action<Action> _actionShowInterstitial;
-        public MusicAlbumPageBaseViewModel(IDbLogic dbLogic, IPCLUserMusicLogic pclUserMusicLogic, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient)
+        protected WeakEventManager _playerReady;
+        public MusicAlbumPageBaseViewModel(IDbLogic dbLogic, IPCLUserAlbumLogic pclUserAlbumLogic, IPCLUserMusicLogic pclUserMusicLogic, CommonPageViewModel commonPageViewModel, CommonMusicPageViewModel commonMusicPageViewModel, CommonMusicPlayerViewModel musicPlayerViewModel, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient)
         {
             _dbLogic = dbLogic;
+            _pclUserAlbumLogic = pclUserAlbumLogic;
             _pclUserMusicLogic = pclUserMusicLogic;
+            _commonPageViewModel = commonPageViewModel;
+            _commonMusicPageViewModel = commonMusicPageViewModel;
+            _musicPlayerViewModel = musicPlayerViewModel;
             _tocaTudoApi = tocaTudoApi;
+            _audioPlayer = DependencyService.Get<IAudio>();
             _ytClient = ytClient;
-            _isSearching = false;
+            _isReady = true;
 
-            IAudio audioPlayer = DependencyService.Get<IAudio>();
-
-            CrossMTAdmob.Current.OnInterstitialClosed += (sender, e) =>
-            {
-                if (MusicPlaying?.IsActiveMusic ?? false)
-                    audioPlayer.Play();
-            };
+            _musicPlaylist = new ObservableCollection<SearchMusicModel>();
+            _audioPlayer.PlayerReady += AudioPlayer_CommonPlayerReady;
         }
-        public MusicAlbumPageBaseViewModel(IDbLogic dbLogic, IPCLUserMusicLogic pclUserMusicLogic, ICommonFormDownloadViewModel formDownloadViewModel, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient)
+        public event EventHandler PlayerReady
         {
-            _dbLogic = dbLogic;
-            _pclUserMusicLogic = pclUserMusicLogic;
-            _formDownloadViewModel = formDownloadViewModel;
-            _tocaTudoApi = tocaTudoApi;
-            _ytClient = ytClient;
-            _isSearching = false;
-
-            IAudio audioPlayer = DependencyService.Get<IAudio>();
-
-            CrossMTAdmob.Current.OnInterstitialClosed += (sender, e) =>
-            {
-                if (MusicPlaying?.IsActiveMusic ?? false)
-                    audioPlayer.Play();
-            };
+            add => _playerReady.AddEventHandler(value);
+            remove => _playerReady.RemoveEventHandler(value);
         }
-        public event Action PlayerReady
+        public ObservableCollection<SearchMusicModel> MusicPlaylist
         {
-            add => _playerReady += value;
-            remove => _playerReady -= value;
-        }
-        public event Action ShowInterstitial
-        {
-            add
+            get { return _musicPlaylist; }
+            set
             {
-                _showInterstitial += value;
-            }
-            remove
-            {
-                _showInterstitial -= value;
+                _musicPlaylist = value;
+                OnPropertyChanged(nameof(MusicPlaylist));
             }
         }
-        public event Action<Action> ActionShowInterstitial
-        {
-            add
-            {
-                _actionShowInterstitial += value;
-            }
-            remove
-            {
-                _actionShowInterstitial -= value;
-            }
-        }
-        protected ICommonMusicModel MusicPlaying { get; set; }
-        protected IDbLogic DbLogic 
+        public ICommonMusicModel ReadyMusic { get; set; }
+        protected IDbLogic DbLogic
         {
             get { return _dbLogic; }
         }
         protected YoutubeClient YtClient
         {
             get { return _ytClient; }
+        }
+        public bool PlaylistIsVisible
+        {
+            get { return _playlistIsVisible; }
+            set
+            {
+                _playlistIsVisible = value;
+                OnPropertyChanged(nameof(PlaylistIsVisible));
+            }
+        }
+        public bool IsReady
+        {
+            get { return _isReady; }
+            set
+            {
+                _isReady = value;
+                OnPropertyChanged(nameof(IsReady));
+            }
         }
         public bool IsSearching
         {
@@ -102,50 +99,141 @@ namespace TocaTudoPlayer.Xamarim
         }
         public async Task SerializeMusicModelFromDb(ObservableCollection<SearchMusicModel> searchMusicCollection)
         {
+            IsReady = false;
             IsSearching = true;
+            UserMusicAlbumSelect musicAlbumSelect = null;
 
             searchMusicCollection.Clear();
 
             await _pclUserMusicLogic.LoadDb();
 
-            UserMusic[] userMusics = _pclUserMusicLogic.GetMusics();
+            UserMusic[] userMusics = await _pclUserMusicLogic.GetMusics();
 
             foreach (UserMusic playlistItem in userMusics)
             {
-                searchMusicCollection.Add(new SearchMusicModel(playlistItem, _formDownloadViewModel, _tocaTudoApi, YtClient, true));
+                if (_commonMusicPageViewModel.MusicAlbumPlaylistSelected != null)
+                {
+                    musicAlbumSelect = _commonMusicPageViewModel.MusicAlbumPlaylistSelected.Where(ma =>
+                    {
+                        playlistItem.HasAlbum = ma.MusicsModel.Exists(mm => string.Equals(mm?.VideoId, playlistItem.VideoId));
+                        return playlistItem.HasAlbum;
+                    }).FirstOrDefault();
+                }
+
+                if (string.Equals(playlistItem.VideoId, ReadyMusic?.VideoId) && ReadyMusic?.SearchType != MusicSearchType.SearchMusicHistory)
+                {
+                    MusicPlaylist.Add((SearchMusicModel)ReadyMusic);
+                }
+                else if (musicAlbumSelect != null)
+                {
+                    searchMusicCollection.Add(new SearchMusicModel(musicAlbumSelect, playlistItem, Icon.ArrowDown, _formDownloadViewModel, _tocaTudoApi, YtClient, true));
+                }
+                else
+                {
+                    searchMusicCollection.Add(new SearchMusicModel(playlistItem, Icon.ArrowDown, _formDownloadViewModel, _tocaTudoApi, YtClient, true));
+                }
             }
 
+            IsReady = true;
             IsSearching = false;
         }
-        public async Task SerializeMusicModelFromDb(ObservableCollection<SearchMusicModel> searchMusicCollection, Func<IDbLogic, Task<ApiSearchMusicModel[]>> funcDbSearch, MusicSearchType searchType, string icon)
+        public async Task SerializeAlbumModelFromDb(ObservableCollection<SearchMusicModel> searchMusicCollection)
         {
+            IsReady = false;
             IsSearching = true;
 
             searchMusicCollection.Clear();
 
-            Task<ApiSearchMusicModel[]> tskDbSearch = funcDbSearch(_dbLogic);
+            await _pclUserAlbumLogic.LoadDb();
 
-            await Task.WhenAll(tskDbSearch);
+            UserAlbum[] userMusics = _pclUserAlbumLogic.GetAlbums();
 
-            foreach (ApiSearchMusicModel playlistItem in tskDbSearch.Result)
+            foreach (UserAlbum playlistItem in userMusics)
             {
-                playlistItem.Icon = icon;
-                searchMusicCollection.Add(new SearchMusicModel(playlistItem, _formDownloadViewModel, _tocaTudoApi, YtClient, searchType, true));
+                searchMusicCollection.Add(new SearchMusicModel(playlistItem, _formDownloadViewModel, _tocaTudoApi, YtClient, true));
             }
 
+            IsReady = true;
             IsSearching = false;
         }
-        protected void RaiseplayerReady()
+        public void LoadAlbumMusicPlaylist(string albumId, string albumName)
         {
-            _playerReady();
+            _musicPlayerViewModel.SetAlbumMusicPlaylist(new AlbumMusicModelServicePlayer(albumId, albumName, MusicPlaylist.ToArray()));
         }
-        protected void RaiseShowInterstitial()
+        private void AudioPlayer_CommonPlayerReady(object sender, ICommonMusicModel music)
         {
-            _showInterstitial();
+            Task.Run(() =>
+            {
+                if (music != null)
+                {
+                    MusicPlaylist.Where(m => !string.Equals(m.VideoId, music.VideoId))
+                                 .ForEach(m =>
+                                 {
+                                     m.IsPlaying = false;
+                                     m.IsSelected = false;
+                                     m.IsActiveMusic = false;
+                                     m.IsBufferingMusic = false;
+                                 });
+
+                    music.IsPlaying = true;
+                    music.IsSelected = true;
+                    music.IsActiveMusic = true;
+                }
+            });
         }
-        protected void RaiseActionShowInterstitial(Action action)
+        protected async void AudioPlayer_PlayerAlbumMusicPlaylistChanged(object sender, ItemServicePlayer obj)
         {
-            _actionShowInterstitial(action);
+            if (AppHelper.MusicPlayerInterstitialIsLoadded || AppHelper.HasInterstitialToShow)
+                return;
+
+            if (_musicPlayerViewModel.KindMusicPlayingNow != MusicSearchType.SearchSavedMusic && _musicPlayerViewModel.KindMusicPlayingNow != MusicSearchType.SearchMusicAlbumHistory)
+                return;
+
+            SearchMusicModel musicModel = MusicPlaylist.Where(item => string.Equals(item.VideoId, obj.VideoId))
+                                                       .FirstOrDefault();
+
+            MusicPlaylist.ForEach(m =>
+            {
+                m.IsPlaying = false;
+                m.IsSelected = false;
+                m.IsActiveMusic = false;
+                m.IsBufferingMusic = false;
+            });
+
+            musicModel.IsActiveMusic = true;
+            musicModel.IsSelected = true;
+
+            if (_musicPlayerViewModel.KindMusicPlayingNow == MusicSearchType.SearchSavedMusic)
+                await _musicPlayerViewModel.PlaySavedMusic(musicModel)
+                                           .OnError(nameof(SavedMusicPageViewModel), () =>
+                                           {
+                                               musicModel.IsLoadded = false;
+                                               musicModel.IsActiveMusic = false;
+
+                                               RaiseDefaultAppErrorEvent();
+                                           });
+            else if (_musicPlayerViewModel.KindMusicPlayingNow == MusicSearchType.SearchMusicAlbumHistory)
+                await _musicPlayerViewModel.PlayMusic(musicModel, new CancellationTokenSource().Token)
+                                           .OnError(nameof(SavedMusicPageViewModel), () =>
+                                           {
+                                               musicModel.IsLoadded = false;
+                                               musicModel.IsActiveMusic = false;
+
+                                               RaiseDefaultAppErrorEvent();
+                                           });
+        }
+        protected void AudioPlayer_OnInterstitialClosed(object sender, EventArgs e)
+        {
+            AppHelper.HasInterstitialToShow = false;
+            AppHelper.MusicPlayerInterstitialIsLoadded = false;
+
+            if (ReadyMusic != null && _commonPageViewModel.SelectedAlbum == null)
+            {
+                ReadyMusic.IsActiveMusic = true;
+                ReadyMusic.IsPlaying = true;
+
+                _musicPlayerViewModel.PlayMusic();
+            }
         }
     }
 }

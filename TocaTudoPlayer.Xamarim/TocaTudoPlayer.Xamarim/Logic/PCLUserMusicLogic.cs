@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Threading.Tasks;
 
 namespace TocaTudoPlayer.Xamarim
@@ -6,7 +6,7 @@ namespace TocaTudoPlayer.Xamarim
     public class PCLUserMusicLogic : IPCLUserMusicLogic
     {
         private readonly IPCLUserMusicDb _pclUserMusicDb;
-        public PCLUserMusicLogic(IPCLUserMusicDb pclUserMusicDb) 
+        public PCLUserMusicLogic(IPCLUserMusicDb pclUserMusicDb)
         {
             _pclUserMusicDb = pclUserMusicDb;
         }
@@ -18,14 +18,24 @@ namespace TocaTudoPlayer.Xamarim
         {
             _pclUserMusicDb.UnLoadDb();
         }
-        public async Task<bool> SaveMusicOnLocalDb(MusicModel music, (bool, byte[]) tpMusic)
+        public async Task<bool> SaveOrUpdateMusicOnLocalDb(MusicModel music, (bool, byte[], object) tpMusic)
         {
-            return await  _pclUserMusicDb.SaveMusicOnLocalDb(music, tpMusic);
+            if (!ExistsOnLocalDb(music.VideoId))
+                return await _pclUserMusicDb.SaveOrUpdateMusicOnLocalDb(tpMusic);
+
+            return false;
         }
-        public UserMusic[] GetMusics() 
+        public async Task<bool> UpdateMusicOnLocalDb(UserMusic userMusic)
         {
-            return _pclUserMusicDb.GetMusics()
-                                  .ToArray();
+            if (ExistsOnLocalDb(userMusic.VideoId))
+                return await _pclUserMusicDb.UpdateMusicOnLocalDb(userMusic);
+
+            return false;
+        }
+        public async Task<UserMusic[]> GetMusics()
+        {
+            return (await _pclUserMusicDb.EnsureUniqueValidItemInQueue(_pclUserMusicDb.GetMusics()))
+                                         .ToArray();
         }
         public async Task<(UserMusic, byte[])> GetMusicById(string videoId)
         {
@@ -34,6 +44,10 @@ namespace TocaTudoPlayer.Xamarim
         public bool ExistsOnLocalDb(string videoId)
         {
             return _pclUserMusicDb.ExistsOnLocalDb(videoId);
+        }
+        public async Task RemoveMusicFromLocalDb(string videoId, Action musicRemoved)
+        {
+            await _pclUserMusicDb.RemoveMusicFromLocalDb(videoId, musicRemoved);
         }
     }
 }

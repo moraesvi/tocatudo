@@ -1,9 +1,8 @@
 ﻿using System.ComponentModel;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using TocaTudoPlayer.Xamarim.Interface;
-using TocaTudoPlayer.Xamarim.ViewModel.CustomView;
 using Xamarin.Forms;
 
 namespace TocaTudoPlayer.Xamarim
@@ -22,30 +21,17 @@ namespace TocaTudoPlayer.Xamarim
         private ImageSource _iconButtonMusic;
         private ImageSource _musicImage;
         private ITocaTudoApi _tocaTudoApi;
-        private MusicBottomPlayerViewModelBase _vm;
-        public MusicStatusBottomModel(ITocaTudoApi tocaTudoApi, MusicBottomPlayerViewModelBase vm)
+        private HttpClient _httpClient;
+        private MusicBottomPlayerBaseViewModel _vm;
+        public MusicStatusBottomModel(ITocaTudoApi tocaTudoApi, MusicBottomPlayerBaseViewModel vm)
         {
             _tocaTudoApi = tocaTudoApi;
-            _musicStreamComplete = false;
+            _httpClient = new HttpClient();
             _vm = vm;
 
+            _iconButtonMusic = AppHelper.FaviconImageSource(Icon.PlayCircle, 36, Color.Black);
+            
             _vm.MusicIsPlayingEvent += VM_MusicIsPlayingEvent;
-        }
-        public MusicStatusBottomModel(ITocaTudoApi tocaTudoApi, IMusicBottomPlayerViewModel vm)
-        {
-            _tocaTudoApi = tocaTudoApi;
-            _musicStreamComplete = false;
-            //_vm = vm;
-
-            //_vm.MusicIsPlayingEvent += VM_MusicIsPlayingEvent;
-        }
-        public MusicStatusBottomModel(ITocaTudoApi tocaTudoApi, IMusicBottomAlbumPlayerViewModel vm)
-        {
-            _tocaTudoApi = tocaTudoApi;
-            _musicStreamComplete = false;
-            //_vm = vm;
-
-            //_vm.MusicIsPlayingEvent += VM_MusicIsPlayingEvent;
         }
         public bool BottomStatusIsVisible
         {
@@ -160,10 +146,16 @@ namespace TocaTudoPlayer.Xamarim
             _musicStreamComplete = false;
             _bottomPlayerIsVisible = false;
             _bottomPlayerLoadingIsVisible = false;
+            ByteMusicImage = new byte[] { };
+            MusicImage = null;
         }
-        private void VM_MusicIsPlayingEvent(bool playing)
+        public void MusicIsPlayingButton(bool playing)
         {
-            IconButtonMusic = !playing ? AppHelper.FaviconImageSource(Icon.PlayCircle, 35, Color.Black) : AppHelper.FaviconImageSource(Icon.PauseCircle, 35, Color.Black);
+            IconButtonMusic = !playing ? AppHelper.FaviconImageSource(Icon.PlayCircle, 36, Color.Black) : AppHelper.FaviconImageSource(Icon.PauseCircle, 36, Color.Black);
+        }
+        private void VM_MusicIsPlayingEvent(object sender, bool playing)
+        {
+            IconButtonMusic = !playing ? AppHelper.FaviconImageSource(Icon.PlayCircle, 36, Color.Black) : AppHelper.FaviconImageSource(Icon.PauseCircle, 36, Color.Black);
         }
         public async Task LoadMusicImageInfo(string videoId, CancellationToken cancellationToken = default)
         {
@@ -172,13 +164,29 @@ namespace TocaTudoPlayer.Xamarim
             if (cancellationToken.IsCancellationRequested)
                 return;
 
-            byte[] mData = await _tocaTudoApi.PlayerImageEndpoint(videoId);
+            byte[] mData = await _tocaTudoApi.PlayerImageWidescreenEndpoint(videoId);
 
             if (mData != null)
             {
                 ByteMusicImage = mData;
                 MusicImage = ImageSource.FromStream(() => new MemoryStream(mData));
             }
+        }
+        public async Task LoadMusicImageInfo(ICommonMusicModel musicModel)
+        {
+            if (musicModel.ByteMusicImage?.Length > 0)
+            {
+                LoadMusicImageInfo(musicModel.ByteMusicImage);
+            }
+            else if (!string.IsNullOrEmpty(musicModel.MusicImageUrl))
+            {
+                await LoadMusicImageInfo(musicModel.MusicImageUrl);
+            }
+        }
+        public async Task LoadMusicImageInfo(string uri)
+        {
+            ByteMusicImage = await _httpClient.GetByteArrayAsync(uri);
+            MusicImage = ImageSource.FromStream(() => new MemoryStream(ByteMusicImage));
         }
         public void LoadMusicImageInfo(byte[] byteImg)
         {

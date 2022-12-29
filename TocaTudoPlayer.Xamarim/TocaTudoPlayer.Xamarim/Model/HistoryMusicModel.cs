@@ -2,35 +2,40 @@
 using System;
 using System.Threading.Tasks;
 using Xamarin.Forms;
-using YoutubeParse.ExplodeV2;
+using YoutubeExplode;
 
 namespace TocaTudoPlayer.Xamarim
 {
-    public class HistoryMusicModel : MusicBaseViewModel
+    public class HistoryMusicModel : MusicModelBase
     {
-        private byte[] _byteImgMusic;
         private bool _musicIsEnabled;
         private bool _downloadMusicButtonFormIsVisible;
         private int _formDownloadSize;
-        private Action _downloadComplete;
-        public HistoryMusicModel(ICommonFormDownloadViewModel formDownloadViewModel, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient, bool isSavedOnLocalDb)
-            : base(formDownloadViewModel, tocaTudoApi, ytClient)
+        public HistoryMusicModel(CommonFormDownloadViewModel formDownloadViewModel, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient, bool hasAlbumSaved, bool isSavedOnLocalDb)
+            : base(formDownloadViewModel, tocaTudoApi, ytClient, hasAlbumSaved, isSavedOnLocalDb)
         {
-            base.IsSavedOnLocalDb = isSavedOnLocalDb;
+            IsSavedOnLocalDb = isSavedOnLocalDb;
+            TextColorMusic = "White";
+
+            MusicAlbumPopupModel = new MusicAlbumDialogDataModel(musicHasAlbumSaved: hasAlbumSaved);
 
             _musicIsEnabled = true;
             _formDownloadSize = 0;
-            _downloadMusicButtonFormIsVisible = isSavedOnLocalDb ? false : true;
+            _downloadMusicButtonFormIsVisible = !isSavedOnLocalDb;
 
             Download.DownloadComplete += HistoryMusicModel_DownloadCompleteEvent;
         }
-        public byte[] ByteImgMusic
+        public HistoryMusicModel(UserMusicAlbumSelect musicAlbumSelected, CommonFormDownloadViewModel formDownloadViewModel, ITocaTudoApi tocaTudoApi, YoutubeClient ytClient, bool hasAlbumSaved, bool isSavedOnLocalDb)
+            : base(musicAlbumSelected, formDownloadViewModel, tocaTudoApi, ytClient, hasAlbumSaved, isSavedOnLocalDb)
         {
-            get { return _byteImgMusic; }
-            set
-            {
-                _byteImgMusic = value;
-            }
+            IsSavedOnLocalDb = isSavedOnLocalDb;
+            TextColorMusic = "White";
+
+            _musicIsEnabled = true;
+            _formDownloadSize = 0;
+            _downloadMusicButtonFormIsVisible = !isSavedOnLocalDb;
+
+            Download.DownloadComplete += HistoryMusicModel_DownloadCompleteEvent;
         }
         public bool MusicIsEnabled
         {
@@ -59,12 +64,12 @@ namespace TocaTudoPlayer.Xamarim
                 OnPropertyChanged(nameof(DownloadMusicButtonFormIsVisible));
             }
         }
-        public override Task StartDownloadMusic()
+        public override Task<DownloadQueueStatus> StartDownloadMusic(MusicPlayedHistoryViewModel musicPlayedHistoryViewModel)
         {
             MusicIsEnabled = false;
-            return base.StartDownloadMusic(ByteImgMusic);
+            return StartDownloadMusic(ByteMusicImage, musicPlayedHistoryViewModel);
         }
-        private void HistoryMusicModel_DownloadCompleteEvent((bool, byte[]) compressedMusic, object model)
+        private void HistoryMusicModel_DownloadCompleteEvent(object sender, (bool, byte[], object) tpMusic)
         {
             MusicIsEnabled = true;
             DownloadMusicButtonFormIsVisible = false;

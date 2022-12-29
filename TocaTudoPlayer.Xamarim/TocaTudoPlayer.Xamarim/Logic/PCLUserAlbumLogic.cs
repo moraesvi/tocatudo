@@ -28,11 +28,12 @@ namespace TocaTudoPlayer.Xamarim
         {
             return await _pclUserAlbumDb.GetAlbumById(videoId);
         }
-        public List<UserAlbum> GetAlbums()
+        public UserAlbum[] GetAlbums()
         {
-            return _pclUserAlbumDb.GetAlbums();
+            return _pclUserAlbumDb.GetAlbums()
+                                  .ToArray();
         }
-        public async Task<bool> SaveAlbumOnLocalDb(AlbumModel album, (bool, byte[]) tpAlbum)
+        public async Task<bool> SaveAlbumOnLocalDb(AlbumModel album, (bool, byte[], object) tpAlbum)
         {
             return await _pclUserAlbumDb.SaveAlbumOnLocalDb(album, tpAlbum);
         }

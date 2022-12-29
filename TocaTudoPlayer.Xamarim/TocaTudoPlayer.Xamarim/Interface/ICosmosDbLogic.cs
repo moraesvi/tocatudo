@@ -4,8 +4,8 @@ namespace TocaTudoPlayer.Xamarim
 {
     public interface ICosmosDbLogic
     {
-        AppConfig GetAppConfig();
-        Task InsertAppException(AppException item);
-        Task InsertAppConfig(AppConfig item);
+        //Task<AppConfig> GetAppConfig();
+        //Task InsertAppException(AppException item);
+        //Task InsertAppConfig(AppConfigAdMob item);
     }
 }

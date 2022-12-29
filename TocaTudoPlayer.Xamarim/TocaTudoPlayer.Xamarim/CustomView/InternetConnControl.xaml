@@ -3,9 +3,12 @@
            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
            xmlns:resource="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
            x:Class="TocaTudoPlayer.Xamarim.InternetConnControl"
-           IsVisible="{Binding IsNotInternetConnection}" Margin="1" HeightRequest="35" CornerRadius="10" OutlineColor="DarkOrange" Padding="5">
+           Margin="5,2,5,0"
+           CornerRadius="10" 
+           OutlineColor="DarkOrange" 
+           Padding="5">
     <StackLayout VerticalOptions="CenterAndExpand" Orientation="Horizontal">
         <Image HorizontalOptions="Start" Source="wifiOffline"/>
-        <Label VerticalTextAlignment="Center" Text="{x:Static resource:AppResource.AlbumPlayingOfflineLabel}" FontSize="14" FontFamily="OpenSans-Regular.ttf#Regular 400 italic"/>
+        <Label VerticalTextAlignment="Center" Text="{x:Static resource:AppResource.AlbumPlayingOfflineLabel}" FontSize="14"/>
     </StackLayout>
 </Frame>

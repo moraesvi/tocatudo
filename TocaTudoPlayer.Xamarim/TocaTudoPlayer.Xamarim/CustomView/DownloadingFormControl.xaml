@@ -1,62 +1,97 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<StackLayout xmlns="http://xamarin.com/schemas/2014/forms" 
+<StackLayout xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim" 
-             xmlns:jbb="clr-namespace:JimBobBennett.AnimatedProgress;assembly=JimBobBennett.AnimatedProgress"
-             xmlns:resource="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
+             xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
              x:Class="TocaTudoPlayer.Xamarim.DownloadingFormControl"
-             x:DataType="local:ICommonFormDownloadViewModel"             
-             Margin="2,2,2,0"
-             IsVisible="{Binding IsFormDownloadVisible}">
-    <Grid RowSpacing="0">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
-        </Grid.RowDefinitions>
-        <Frame x:Name="frmDownloadMusic" CornerRadius="10" Grid.Row="0" IsClippedToBounds="True" Padding="0" HasShadow="false">
-            <Frame.Background>
-                <LinearGradientBrush>
-                    <GradientStop Color="#2672AF" Offset="0" />
-                    <GradientStop Color="#C3D3E7" Offset=".5" />
-                </LinearGradientBrush>
-            </Frame.Background>
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Grid RowSpacing="0" Padding="4, 2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+             x:DataType="local:CommonFormDownloadViewModel"
+             IsVisible="{Binding IsFormDownloadVisible}"
+             Margin="5,0,5,0">
+    <CollectionView ItemsSource="{Binding DownloadQueue}" ItemSizingStrategy="MeasureAllItems" ItemsUpdatingScrollMode="KeepItemsInView">
+        <CollectionView.ItemsLayout>
+            <LinearItemsLayout Orientation="Vertical" ItemSpacing="2"/>
+        </CollectionView.ItemsLayout>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="local:DownloadMusicModel">
+                <Grid RowSpacing="0">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="40"/>
                     </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Grid.Column="0" HorizontalOptions="FillAndExpand" VerticalOptions="CenterAndExpand">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Image Grid.Row="0" Grid.Column="0">
-                            <Image.Source>
-                                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Music}" Size="22" Color="White"/>
-                            </Image.Source>
-                        </Image>
-                        <Grid Grid.Row="0" Grid.Column="1" RowSpacing="0">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="15"/>
-                                <RowDefinition Height="15"/>
-                            </Grid.RowDefinitions>
-                            <Label Text="{Binding MusicName}" Grid.Row="0" FontSize="12" TextColor="White" FontAttributes="Bold" LineBreakMode="TailTruncation"/>
-                            <Grid Grid.Row="1" ColumnSpacing="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Label Grid.Column="0" Text="{Binding Download.PercentDesc}" FontSize="12" TextColor="White" FontAttributes="Bold"/>
-                                <ProgressBar VerticalOptions="EndAndExpand" Grid.Column="1" HeightRequest="2" BackgroundColor="White" jbb:AttachedProperties.AnimatedProgress="{Binding Download.Progress}" jbb:AttachedProperties.AnimatedProgressAnimationTime="500" jbb:AttachedProperties.AnimatedProgressEasing="BounceOut"/>
+                    <Frame x:Name="frmDownloadMusic" CornerRadius="10" Grid.Row="0" IsClippedToBounds="True" Padding="0" HasShadow="false">
+                        <Frame.Background>
+                            <LinearGradientBrush>
+                                <GradientStop Color="#2672AF" Offset="0" />
+                                <GradientStop Color="#7caacf" Offset=".5" />
+                            </LinearGradientBrush>
+                        </Frame.Background>
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid RowSpacing="0" Padding="4, 2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="30"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Grid.Column="0" HorizontalOptions="FillAndExpand" VerticalOptions="CenterAndExpand">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Grid.Row="0" Grid.Column="0">
+                                        <Image.Source>
+                                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Music}" Size="22" Color="White"/>
+                                        </Image.Source>
+                                    </Image>
+                                    <Grid Grid.Row="0" Grid.Column="1" RowSpacing="0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="16"/>
+                                            <RowDefinition Height="15"/>
+                                        </Grid.RowDefinitions>
+                                        <Label Text="{Binding MusicName}" Grid.Row="0" FontSize="12" TextColor="White" FontAttributes="Bold" LineBreakMode="TailTruncation"/>
+                                        <Grid Grid.Row="1" ColumnSpacing="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Label Grid.Column="0" Text="{Binding Download.PercentDesc}" FontSize="12" TextColor="White" FontAttributes="Bold"/>
+                                            <ProgressBar VerticalOptions="EndAndExpand" Grid.Column="1" HeightRequest="2" BackgroundColor="White" local:AttachedProperties.AnimatedProgress="{Binding Download.Progress}"/>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                                <!--<Grid Grid.Row="0" Grid.Column="0" HorizontalOptions="FillAndExpand" VerticalOptions="CenterAndExpand" IsVisible="{Binding AlbumDownloadModeIsVisible}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Grid.Row="0" Grid.Column="0">
+                                        <Image.Source>
+                                            <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.FileImageO}" Size="22" Color="White"/>
+                                        </Image.Source>
+                                    </Image>
+                                    <Button Text="Iniciar" Grid.Row="0" Padding="0" Margin="0,2,0,0" Grid.Column="1" IsVisible="{Binding Download.IsDownloadEventEnabled}"/>
+                                    <Grid Grid.Row="0" Grid.Column="2" RowSpacing="0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="15"/>
+                                            <RowDefinition Height="15"/>
+                                        </Grid.RowDefinitions>
+                                        <Label Text="{Binding MusicName}" Grid.Row="0" FontSize="12" TextColor="White" FontAttributes="Bold" LineBreakMode="TailTruncation"/>
+                                        <Grid Grid.Row="1" ColumnSpacing="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Label Grid.Column="0" Text="{Binding Download.PercentDesc}" FontSize="12" TextColor="White" FontAttributes="Bold"/>
+                                            <ProgressBar VerticalOptions="EndAndExpand" Grid.Column="1" HeightRequest="2" BackgroundColor="White" local:AttachedProperties.AnimatedProgress="{Binding Download.Progress}"/>
+                                        </Grid>
+                                    </Grid>
+                                </Grid>-->
                             </Grid>
+                            <Image Grid.Row="0" Grid.Column="1" Aspect="AspectFit" HorizontalOptions="End" VerticalOptions="FillAndExpand" Source="{Binding ImgMusic}" />
                         </Grid>
-                    </Grid>
+                    </Frame>
                 </Grid>
-                <Image Grid.Row="0" Grid.Column="1" Aspect="AspectFit" HorizontalOptions="End" VerticalOptions="FillAndExpand" Source="{Binding ImgMusic}" />
-            </Grid>
-        </Frame>
-    </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+    </CollectionView>
 </StackLayout>

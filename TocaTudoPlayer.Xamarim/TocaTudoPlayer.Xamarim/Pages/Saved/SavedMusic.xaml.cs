@@ -1,11 +1,11 @@
-﻿using dotMorten.Xamarin.Forms;
-using MarcTron.Plugin;
+﻿using MarcTron.Plugin;
+using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Unity;
+using TocaTudoPlayer.Xamarim.Resources;
+//using Unity;
 using Xamarin.CommunityToolkit.Extensions;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
@@ -15,101 +15,49 @@ namespace TocaTudoPlayer.Xamarim.Pages
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class SavedMusic : ContentPage
     {
-        private readonly IUnityContainer _unityContainer;
-        private IMusicSavedPageViewModel _vm;
-        private SearchMusicModel _searchMusicLastSelected;
-        private CancellationTokenSource _searchMusicLastSelectedToken;
+        private SavedMusicPageViewModel _vm;
         private MusicAlbumPopup _musicAlbumPopup;
-        private Action _audioPlayerPlay;
-        private Grid _lastGridMusicSelected;
         private bool _formLoaded;
-        private bool _formIsVisible;
-        private bool _showInterstitialOnAppearing;
-        private int _playedHistoryCollectionSize;
-        public SavedMusic(IUnityContainer unityContainer)
+        private MusicAlbumSetupPopup _musicAlbumSetupPopup;
+        private static bool _formIsVisible;
+        public SavedMusic()
         {
-            _unityContainer = unityContainer;
-            _vm = unityContainer.Resolve<IMusicSavedPageViewModel>();
+            InitializeComponent();
+
+            Title = $"{AppResource.AppName} - {AppHelper.ToTitleCase(AppResource.MusicMusicButton)}";
+
+            _vm = App.Services.GetRequiredService<SavedMusicPageViewModel>();
 
             BindingContext = _vm;
 
-            _musicAlbumPopup = new MusicAlbumPopup(_vm);
+            _musicAlbumPopup = new MusicAlbumPopup();
 
-            //_vm.PlayerReady += ViewModel_PlayerReady;
-            _vm.ActionShowInterstitial += ViewModel_ShowInterstitial;
-            _musicAlbumPopup.DeleteActionAlbumPopup += MusicAlbumPopup_DeleteActionAlbumPopup;
-            //_vm.MusicPlayerViewModel.MusicPlayedHistoricIsSaved += MusicPlayerViewModel_MusicPlayedHistoricIsSaved;
+            _vm.ActionShowInterstitial += ViewModel_ActionShowInterstitial;
             _vm.AppErrorEvent += ViewModel_AppErrorEvent;
 
-            InitializeComponent();
+            MainPage.TimeSleepingEvent += MainPage_TimeSleepingEvent;
 
-            ucPlayerControl.BindingContext = unityContainer.Resolve<IMusicBottomPlayerViewModel>();
-            ucPlayerControl.ViewModel = unityContainer.Resolve<IMusicBottomPlayerViewModel>();
-        }
-        private void SearchMusictActionButton_Clicked(object sender, EventArgs e)
-        {
+            MusicBottomPlayerViewModel bottomPlayer = App.Services.GetRequiredService<MusicBottomPlayerViewModel>();
 
-        }
-        private async void ViewCellMusicPlaylist_Tapped(object sender, EventArgs e)
-        {
-            SearchMusicModel searchMusic = (SearchMusicModel)((TappedEventArgs)e).Parameter;
+            ucPlayerControl.BindingContext = bottomPlayer;
+            ucPlayerControl.ViewModel = bottomPlayer;
 
-            //if (_vm.MusicPlayerViewModel.LastMusicPlayed != null)
-            //    if (_vm.MusicPlayerViewModel.LastMusicPlayed.IsActiveMusic)
-            //    {
-            //        _vm.MusicPlayerViewModel.LastMusicPlayed.ReloadMusicPlayingIcon();
-            //        _vm.MusicPlayerViewModel.LastMusicPlayed.UpdMusicSelectedColor();
-            //        _vm.MusicPlayerViewModel.LastMusicPlayed.UpdMusicFontColor();
-            //        _vm.MusicPlayerViewModel.LastMusicPlayed.IsActiveMusic = false;
-            //        _searchMusicLastSelected = null;
-            //        _lastGridMusicSelected = null;
-            //    }
+            ucPlayerControl.ViewModel.MusicShowInterstitial += ViewModel_ShowInterstitial;
 
-            if (_searchMusicLastSelected != null)
+            CrossMTAdmob.Current.LoadInterstitial(App.AppConfigAdMob.AdsSavedMusicIntersticial);
+
+            myAds.AdsId = App.AppConfigAdMob.AdsSavedMusicBanner;
+            myAds.AdsLoaded += (sender, obj) =>
             {
-                if (_searchMusicLastSelected.Download.IsDownloading || _searchMusicLastSelected.IsDownloadMusicVisible)
-                    return;
-            }
-
-            if (_lastGridMusicSelected != null && _searchMusicLastSelected != null)
-            {
-                //ViewCellMusicPlaylistLastMusicSelected(_vm);
-            }
-
-            if (_searchMusicLastSelectedToken != null)
-                _searchMusicLastSelectedToken.Cancel();
-
-            Grid grid = (Grid)sender;
-
-            if (grid.Id == _lastGridMusicSelected?.Id)
-            {
-                _lastGridMusicSelected = null;
-                return;
-            }
-
-            CancellationTokenSource cancellationToken = new CancellationTokenSource();
-
-            searchMusic.IconMusicStatusEnabled = true;
-            searchMusic.IconMusicStatusVisible = true;
-
-            //searchMusic.UpdMusicSelectedColor();
-            //searchMusic.UpdMusicFontColor();
-
-            _lastGridMusicSelected = grid;
-            _searchMusicLastSelected = searchMusic;
-            _searchMusicLastSelectedToken = cancellationToken;
-
-            //_vm.MusicPlayedHistoryViewModel.PlayedHistoryPlayerFormSize = 0;
-
-            //if (_vm.LastMusicHistorySelected != null)
-            //{
-            //    _vm.LastMusicHistorySelected.UpdMusicSelectedColor();
-            //    _vm.LastMusicHistorySelected = null;
-            //    _vm.MusicPlayedHistoryViewModel.RecentlyPlayedSelected = null;
-            //}
-
-            //await _vm.PlayMusic(searchMusic, cancellationToken.Token);
+                Device.BeginInvokeOnMainThread(() =>
+                {
+                    ((Grid)stlBottom.Children[0]).RowDefinitions[0].Height = GridLength.Auto;
+                });
+            };
         }
+        public static bool FormIsVisible => _formIsVisible;
+        public static async Task ShowInterstitial(Action intertistialNotLoaded) => await CustomCrossMTAdmob.ShowInterstitial(intertistialNotLoaded, () => { });
+        public static async Task LoadAndShowInterstitial(Action intertistialNotLoaded) => await CustomCrossMTAdmob.LoadAndShowInterstitial(App.AppConfigAdMob.AdsSavedMusicIntersticial, intertistialNotLoaded, () => { });
         private async void ViewCellPlusMusicPlaylist_Clicked(object sender, EventArgs e)
         {
             SearchMusicModel musicModel = (SearchMusicModel)((Button)sender).CommandParameter;
@@ -118,105 +66,145 @@ namespace TocaTudoPlayer.Xamarim.Pages
 
             await Navigation.ShowPopupAsync(_musicAlbumPopup);
         }
-        private async void GridMusicHistoryForm_Clicked(object sender, EventArgs e)
-        {
-            //ViewCellMusicPlaylistLastMusicSelected(_vm);
-            //await _vm.MusicHistoryFormCommand.ExecuteAsync((UserMusicPlayedHistory)((Button)sender).CommandParameter);
-        }
-        private async void AlbumBackButton_Clicked(object sender, EventArgs e)
-        {
-            //await Navigation.PushModalAsync(_vm.CommonPageViewModel.SelectedMusic);
-        }
-        private void CollectionViewMusicPlaylist_Changed(object sender, SelectionChangedEventArgs e)
-        {
-
-        }
         private void BtnSearch_Clicked(object sender, EventArgs e)
         {
-            pkAlbumMusicSavedSelect.SelectedItem = null;
-            ((IMusicPageViewModel)BindingContext).SearchMusicCommand.Execute(null);
-        }
-        private void ImgbDownloadMusicVisible_Clicked(object sender, EventArgs e)
-        {
-
-        }
-        private void ImgbDownloadMusic_Clicked(object sender, EventArgs e)
-        {
-            ImageButton btn = (ImageButton)sender;
-            SearchMusicModel playlistItem = (SearchMusicModel)btn.CommandParameter;
-
-            ((IMusicPageViewModel)BindingContext).DownloadMusicCommand.Execute(playlistItem);
+            ((MusicPageViewModel)BindingContext).SearchMusicCommand.Execute(null);
         }
         private void AlbumMusicSavedSelect_Clicked(object sender, EventArgs e)
         {
             SelectModel musicSelected = (SelectModel)((Picker)sender).SelectedItem;
-            //_vm.MusicHistoryAlbumSelectedCommand.Execute(musicSelected);
+            _vm.MusicAlbumSavedSelectedCommand.ExecuteAsync(musicSelected);
         }
-        private void ViewModel_AppErrorEvent(int level, string msg)
-        {
-        }
-        private void ViewModel_ShowInterstitial(Action audioPlayerPlay)
-        {
-            if (_formIsVisible)
-            {
-                if (CrossMTAdmob.Current.IsInterstitialLoaded() && !AppHelper.MusicPlayerInterstitialWasShowed)
-                {
-                    Device.BeginInvokeOnMainThread(() =>
-                    {
-                        CrossMTAdmob.Current.LoadInterstitial(App.AppConfig.AdMob.AdsIntersticialAlbum);
-                        CrossMTAdmob.Current.ShowInterstitial();
-                    });
 
-                    AppHelper.MusicPlayerInterstitialWasShowed = true;
+        private async void ViewCellPlusSavedMusicPlaylist_Clicked(object sender, EventArgs e)
+        {
+            ICommonMusicModel musicModel = (ICommonMusicModel)((Button)sender).CommandParameter;
+
+            _musicAlbumSetupPopup = new MusicAlbumSetupPopup() { BindingContext = musicModel };
+            _musicAlbumSetupPopup.DeleteMusicFromAlbumInvoked += MusicAlbumSetupPopup_DeleteMusicFromAlbumInvoked;
+            _musicAlbumSetupPopup.DeleteMusicInvoked += MusicAlbumSetupPopup_DeleteMusicInvoked; ;
+
+            await Navigation.ShowPopupAsync(_musicAlbumSetupPopup);
+        }
+
+        private async void MusicAlbumSetupPopup_DeleteMusicFromAlbumInvoked(object sender, (string Message, ICommonMusicModel Model) tupple)
+        {
+            bool ok = await DisplayAlert(AppResource.AppName, tupple.Message, "ok", AppResource.CancelLabel);
+            if (ok)
+            {
+                LoadingControlPopup processingPopup = new LoadingControlPopup()
+                {
+                    StackLayoutBackgroundColor = Color.WhiteSmoke,
+                    ActivityIndicatorColor = Color.FromHex("#ec7211"),
+                    LabelColor = Color.FromHex("#ec7211"),
+                    LabelText = AppResource.DeletingLabel,
+                    CloseWhen = async () =>
+                    {
+                        await _vm.DeleteMusicFromAlbumPlaylist(tupple.Model);
+                    }
+                };
+
+                processingPopup.Dismissed += (sender, e) =>
+                {
+                    _musicAlbumSetupPopup.Dismiss(_musicAlbumPopup);
+                };
+
+                await Navigation.ShowPopupAsync(processingPopup);
+            }
+        }
+
+        private async void MusicAlbumSetupPopup_DeleteMusicInvoked(object sender, (string Message, ICommonMusicModel Model) tupple)
+        {
+            bool ok = await DisplayAlert(AppResource.AppName, tupple.Message, "ok", AppResource.CancelLabel);
+            if (ok)
+            {
+                LoadingControlPopup processingPopup = new LoadingControlPopup()
+                {
+                    StackLayoutBackgroundColor = Color.WhiteSmoke,
+                    ActivityIndicatorColor = Color.FromHex("#ec7211"),
+                    LabelColor = Color.FromHex("#ec7211"),
+                    LabelText = AppResource.DeletingLabel,
+                    CloseWhen = async () =>
+                    {
+                        await _vm.DeleteDownloadedMusic(tupple.Model);
+                    }
+                };
+
+                processingPopup.Dismissed += (sender, e) =>
+                {
+                    _musicAlbumSetupPopup.Dismiss(_musicAlbumPopup);
+                };
+
+                await Navigation.ShowPopupAsync(processingPopup);
+            }
+        }
+
+        private void ViewModel_AppErrorEvent(object sender, string msg)
+        {
+            Device.BeginInvokeOnMainThread(async () =>
+            {
+                await DisplayAlert("Ops!", msg, "ok");
+            });
+        }
+        private void ViewModel_ActionShowInterstitial(object sender, Action audioPlayerPlay)
+        {
+            if (_vm.MusicPlayerViewModel.KindMusicPlayingNow != MusicSearchType.SearchSavedMusic)
+                return;
+
+            if (!App.IsSleeping)
+            {
+                if (!AppHelper.MusicPlayerInterstitialIsLoadded)
+                {
+                    Device.BeginInvokeOnMainThread(async () =>
+                    {
+                        await CustomCrossMTAdmob.LoadAndShowInterstitial(App.AppConfigAdMob.AdsSavedMusicIntersticial, () =>
+                        {
+                            _vm.MusicPlayerViewModel.PlayMusic();
+                        }, () =>
+                        {
+                            _vm.MusicPlayerViewModel.Pause();
+                        });
+                    });
                 }
                 else
                     audioPlayerPlay();
             }
             else
             {
-                _audioPlayerPlay = audioPlayerPlay;
-                _showInterstitialOnAppearing = true;
+                AppHelper.HasInterstitialToShow = true;
+                _vm.MusicPlayerViewModel.Pause();
             }
         }
-        private void ViewModel_PlayerReady()
+        private void ViewModel_ShowInterstitial(object sender, EventArgs e)
         {
-            
-        }
-        private void ViewCellMusicPlaylistLastMusicSelected(IMusicPageViewModel bindingContext)
-        {
-            if (_searchMusicLastSelected != null && _searchMusicLastSelected.IconMusicStatusVisible)
+            if (_vm.MusicPlayerViewModel.KindMusicPlayingNow != MusicSearchType.SearchSavedMusic)
+                return;
+
+            if (!App.IsSleeping)
             {
-                _searchMusicLastSelected.IsBufferingMusic = false;
-                _searchMusicLastSelected.IsLoadded = true;
-                _searchMusicLastSelected.IsSelected = true;
-                _searchMusicLastSelected.IconMusicStatusVisible = false;
-                _searchMusicLastSelected.IconMusicDownloadVisible = false;
-                _searchMusicLastSelected.IsDownloadMusicVisible = false;
-
-                bindingContext.MusicPlayerViewModel.PlayPauseMusic((ICommonMusicModel)_searchMusicLastSelected);
+                Device.BeginInvokeOnMainThread(async () =>
+                {
+                    await CustomCrossMTAdmob.LoadAndShowInterstitial(App.AppConfigAdMob.AdsSavedMusicIntersticial, () =>
+                    {
+                        _vm.MusicPlayerViewModel.PlayMusic();
+                    }, () =>
+                    {
+                        _vm.MusicPlayerViewModel.Pause();
+                    });
+                });
             }
-        }
-        private async void MusicAlbumPopup_DeleteActionAlbumPopup(SearchMusicModel musicModel)
-        {
-            bool deletarOk = await DisplayAlert("TocaTudo", "Deletar álbum ?", "ok", "cancelar");
-
-            if (deletarOk)
+            else
             {
-                //await _vm.DeleteMusicAlbumPlaylistSelected(musicModel);
-                _musicAlbumPopup.Dismiss(null);
+                Device.BeginInvokeOnMainThread(() =>
+                {
+                    AppHelper.HasInterstitialToShow = true;
+                    _vm.MusicPlayerViewModel.Pause();
+                });
             }
         }
-        private void TxtSearchNameClear_Clicked(object sender, EventArgs e)
+        private void MainPage_TimeSleepingEvent(object sender, EventArgs e)
         {
-            txtSearchName.Text = string.Empty;
-        }
-        private void TxtSearchName_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs e)
-        {
-
-        }
-        private void TxtSearchName_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs e)
-        {
-            
+            myAds.AdsId = App.AppConfigAdMob.AdsMusicBanner;
         }
         protected async override void OnAppearing()
         {
@@ -224,46 +212,36 @@ namespace TocaTudoPlayer.Xamarim.Pages
 
             if (!_formLoaded)
             {
-                await Task.WhenAll(_vm.MusicPlaylistSearchFromDb(), _vm.CommonMusicPageViewModel.LoadMusicAlbumPlaylistSelected());
+                await Task.WhenAll(_vm.MusicPlaylistSearchFromDb());
 
                 _formLoaded = true;
+                App.EventTracker.SendScreenView($"Saved{Title}", nameof(SavedMusic));
             }
 
-            if (_vm.IsInternetAvaiable && _showInterstitialOnAppearing)
+            if (_vm.IsInternetAvaiableGridSize > 0)
             {
-                if (CrossMTAdmob.Current.IsInterstitialLoaded())
-                {
-                    Device.BeginInvokeOnMainThread(() =>
-                    {
-                        CrossMTAdmob.Current.LoadInterstitial(App.AppConfig.AdMob.AdsIntersticialAlbum);
-                        CrossMTAdmob.Current.ShowInterstitial();
-                    });
-
-                    AppHelper.MusicPlayerInterstitialWasShowed = true;
-                }
-
-                if (!AppHelper.MusicPlayerInterstitialWasShowed)
-                {
-                    if (_audioPlayerPlay != null)
-                        _audioPlayerPlay();
-                }
-
-                _showInterstitialOnAppearing = false;
+                _vm.CheckInternetConnection();
             }
-
 
             base.OnAppearing();
         }
         protected override void OnDisappearing()
         {
-            //_vm.MusicPlayerViewModel.StopBottomPlayer();
             _formIsVisible = false;
-
             base.OnDisappearing();
         }
-        private void CvMusicPlayedHistory_BindingContextChanged(object sender, EventArgs e)
+        private async void TapGestureRecognizer_Tapped(object sender, EventArgs e)
         {
+            Grid grid = (Grid)sender;
+            Grid gridContent = (Grid)grid.Children[2];
 
+            await Task.Delay(100);
+
+            Label musicName = (Label)gridContent.Children[0];
+            Label musicTime = (Label)gridContent.Children[1];
+
+            musicName.SizeUpSizeDownAnimation("MusicNameAnimation");
+            musicTime.SizeUpSizeDownAnimation("MusicTimeAnimation");
         }
     }
 }

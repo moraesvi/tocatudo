@@ -11,9 +11,7 @@ namespace TocaTudoPlayer.Xamarim.Interface
 {
     public interface ISearchPlaylistViewModel : INotifyPropertyChanged
     {
-        event Action PlayerReady;
-        event Action<Action> ShowInterstitial;
-        event Action<int, string> AppErrorEvent;
+        event EventHandler PlayerReady;
         string MusicSearchedName { get; set; }
         string AlbumSearchedName { get; set; }
         bool MenuActionsEnabled { get; set; }
@@ -29,9 +27,9 @@ namespace TocaTudoPlayer.Xamarim.Interface
         bool IsWiFiConnection { get; set; }     
         bool MusicDetailsChangeAlbumIsVisible { get; set; }
         bool MusicDetailsAddAlbumIsVisible { get; set; }
-        ICommonMusicPlayerViewModel MusicPlayer { get; }
-        IAlbumPlayedHistoryViewModel AlbumPlayedHistoryViewModel { get; }
-        IMusicPlayedHistoryViewModel MusicPlayedHistoryViewModel { get; }
+        CommonMusicPlayerViewModel MusicPlayer { get; }
+        AlbumPlayedHistoryViewModel AlbumPlayedHistoryViewModel { get; }
+        MusicPlayedHistoryViewModel MusicPlayedHistoryViewModel { get; }
         ICommand SearchAlbumCommand { get; set; }
         ICommand SearchMusicCommand { get; set; }
         ICommand MusicSavedCommand { get; set; }

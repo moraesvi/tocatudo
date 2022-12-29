@@ -5,8 +5,8 @@ namespace TocaTudoPlayer.Xamarim
 {
     public interface IAzureCosmosConn
     {
-        AppConfig GetAppConfig();
-        Task InsertAppException(TbAppException item);
-        Task InsertAppConfig(TbAppConfig item);
+        //Task<AppConfig> GetAppConfig();
+        //Task InsertAppException(TbAppException item);
+        //Task InsertAppConfig(TbAppConfig item);
     }
 }

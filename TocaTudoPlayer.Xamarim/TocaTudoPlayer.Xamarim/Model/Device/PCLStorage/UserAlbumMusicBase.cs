@@ -7,16 +7,8 @@ namespace TocaTudoPlayer.Xamarim
 {
     public abstract class UserAlbumMusicBase
     {
-        protected async Task<string> GetFileNameLocalPath(string videoId)
+        protected string GetFileNameLocalPath(string videoId)
         {
-            PermissionStatus statusRead = await Permissions.CheckStatusAsync<Permissions.StorageRead>();
-            PermissionStatus statusWrite = await Permissions.CheckStatusAsync<Permissions.StorageWrite>();
-
-            bool hasLocalPermissionToStorage = (statusRead == PermissionStatus.Granted && statusWrite == PermissionStatus.Granted);
-
-            if (!hasLocalPermissionToStorage)
-                return string.Empty;
-
             if (string.IsNullOrEmpty(videoId))
                 return string.Empty;
 

@@ -10,13 +10,17 @@ namespace TocaTudoPlayer.Xamarim
     public class UserAlbum : UserAlbumMusicBase
     {
         private const string USER_ALBUM_SAVED_LOCAL_KEY = "u_album_s";
+        private long _musicTimeTotalSeconds;
         public UserAlbum() { }
-        public UserAlbum(AlbumModel album)
+        public UserAlbum(AlbumModel album, bool isMusicCompressed)
         {
             Album = album.Album;
+            AlbumTime = album.AlbumTime;
+            MusicTimeTotalSeconds = album.MusicTimeTotalSeconds;
             VideoId = album.VideoId;
             ParseType = album.ParseType;
             ImgAlbum = album.ByteImgAlbum;
+            IsMusicCompressed = isMusicCompressed;
 
             if (album.Playlist == null)
                 throw new InvalidOperationException(nameof(album.Playlist));
@@ -27,15 +31,26 @@ namespace TocaTudoPlayer.Xamarim
                 {
                     Id = item.Id,
                     Number = item.Number,
-                    MusicName = item.NomeMusica,
+                    MusicName = item.NomeMusica,                    
                     TimeSeconds = item.TempoSegundosInicio,
                     SecondsStartTime = item.TempoSegundosInicio,
                     SecondsEndTime = item.TempoSegundosFim,
                     DescTime = item.TempoDesc,
                 });
             }
+
+            GenerateLocalKey();
         }
         public string Album { get; set; }
+        public string AlbumTime { get; set; }
+        public long MusicTimeTotalSeconds
+        {
+            get { return _musicTimeTotalSeconds; }
+            set
+            {
+                _musicTimeTotalSeconds = value;
+            }
+        }
         public string VideoId { get; set; }
         public string UAlbumlId { get; set; }
         public string MusicPath { get; set; }
@@ -53,15 +68,17 @@ namespace TocaTudoPlayer.Xamarim
             }
         }
         public string DateTimeIn { get; set; }
-
         public static string UserAlbumSavedLocalKey => USER_ALBUM_SAVED_LOCAL_KEY;
-        public static string GenerateLocalKey()
+        public string GetFileNameLocalPath()
         {
-            return $"{USER_ALBUM_SAVED_LOCAL_KEY}_{Guid.NewGuid().ToString()}.json";
+            return base.GetFileNameLocalPath(VideoId);
         }
-        public async Task<string> GetFileNameLocalPath()
+
+        #region Private Methods
+        private void GenerateLocalKey()
         {
-            return await base.GetFileNameLocalPath(VideoId);
+            UAlbumlId = $"{USER_ALBUM_SAVED_LOCAL_KEY}_{Guid.NewGuid().ToString()}.json";
         }
+        #endregion
     }
 }

@@ -2,19 +2,18 @@
 <Frame xmlns="http://xamarin.com/schemas/2014/forms"
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" 
        xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim" 
-       xmlns:xcc="clr-namespace:Xamarin.Forms.CustomControls.Entries;assembly=Xamarin.Forms.CustomControls"
        x:Class="TocaTudoPlayer.Xamarim.MusicSelectedActions"
        x:Name="musicPopup"
-       CornerRadius="10" Padding="5" x:DataType="local:SearchMusicModel">
+       CornerRadius="10" Padding="5" x:DataType="local:MusicModelBase">
     <Grid RowSpacing="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
             <RowDefinition Height="40"/>
             <RowDefinition Height="40"/>
         </Grid.RowDefinitions>
-        <Grid Grid.Row="0" ColumnSpacing="1" IsVisible="{Binding NormalModeIsVisible}">
+        <Grid Grid.Row="0" ColumnSpacing="1" IsVisible="{Binding MusicAlbumPopupModel.NormalModeIsVisible}">
             <StackLayout Orientation="Horizontal" Spacing="2">
-                <Button Grid.Row="0" Grid.Column="0" Text="Álbum" ContentLayout="Left,10" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistAddAlbum_Clicked" FontAttributes="{Binding MusicDetailsAddAlbumFontAttr}" ImageSource="{Binding MusicDetailsAddAlbumIcon}" CommandParameter="{Binding .}"/>
+                <Button Grid.Row="0" Grid.Column="0" Text="Álbum" ContentLayout="Left,10" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistAddAlbum_Clicked" FontAttributes="{Binding MusicAlbumPopupModel.AddAlbumFontAttr}" ImageSource="{Binding MusicAlbumPopupModel.AddAlbumIcon}" CommandParameter="{Binding .}"/>
                 <Button Grid.Row="0" Grid.Column="1" Text="Download" ContentLayout="Left,10" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistDownloadMusic_Clicked">
                     <Button.ImageSource>
                         <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}" Size="18" Color="DarkOrange"/>
@@ -22,7 +21,7 @@
                 </Button>
             </StackLayout>
         </Grid>
-        <Grid Grid.Row="0" ColumnSpacing="1" IsVisible="{Binding AlbumModeIsVisible}">
+        <Grid Grid.Row="0" ColumnSpacing="1" IsVisible="{Binding MusicAlbumPopupModel.AlbumModeIsVisible}">
             <StackLayout Orientation="Horizontal" Spacing="2">
                 <Label Text="{x:Static local:Icon.FileImageO}" TextColor="Green" VerticalTextAlignment="Center" FontAttributes="Bold" FontFamily="FontAwesomeBold"  FontSize="18" LineBreakMode="TailTruncation"/>
                 <Label Text="Salvo em Álbum!" TextColor="Black" VerticalTextAlignment="Center" FontAttributes="Bold" FontSize="12" LineBreakMode="TailTruncation"/>
@@ -33,7 +32,7 @@
                 </Button>
             </StackLayout>
         </Grid>
-        <Grid Grid.Row="1" IsVisible="{Binding AlbumModeDetailsIsVisible}" VerticalOptions="Start">
+        <Grid Grid.Row="1" IsVisible="{Binding MusicAlbumPopupModel.AlbumModeDetailsIsVisible}" VerticalOptions="Start">
             <StackLayout Orientation="Horizontal" Spacing="2">
                 <Button Text="Editar" HorizontalOptions="FillAndExpand" Clicked="ViewCellPlusMusicPlaylistEditAlbum_Clicked" CommandParameter="{Binding .}">
                     <Button.ImageSource>
@@ -57,15 +56,15 @@
                 </ImageButton>
             </StackLayout>
         </Grid>-->
-        <Grid Grid.Row="2" IsVisible="{Binding MusicAlbumEditFormIsVisible}">
+        <Grid Grid.Row="2" IsVisible="{Binding MusicAlbumPopupModel.EditFormIsVisible}">
             <StackLayout Orientation="Horizontal" Spacing="2" VerticalOptions="EndAndExpand">
-                <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.AlbumMusicSavedSelect, Source={x:Reference musicPopup}}"/>
+                <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding MusicAlbumPopupModel.AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.AlbumMusicSavedSelect, Source={x:Reference musicPopup}}"/>
                 <Button Text="Salvar" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistUpdateAlbumName_Clicked" CommandParameter="{Binding .}"/>
             </StackLayout>
         </Grid>
-        <Grid Grid.Row="1" IsVisible="{Binding MusicDetailsFormAlbumIsVisible}">
-            <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicDetailsSelectAlbumIsVisible}" Spacing="2" VerticalOptions="StartAndExpand">
-                <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.AlbumMusicSavedSelect, Source={x:Reference musicPopup}}"/>
+        <Grid Grid.Row="1" IsVisible="{Binding MusicAlbumPopupModel.FormAlbumIsVisible}">
+            <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicAlbumPopupModel.SelectAlbumIsVisible}" Spacing="2" VerticalOptions="StartAndExpand">
+                <Picker Title="Selecione Álbum" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand"  FontSize="14" ItemDisplayBinding="{Binding Value}" SelectedItem="{Binding MusicAlbumPopupModel.AlbumMusicSavedSelected}" ItemsSource="{Binding Path=ViewModel.AlbumMusicSavedSelect, Source={x:Reference musicPopup}}"/>
                 <Button Text="Salvar" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistUpdateAlbumName_Clicked" CommandParameter="{Binding .}"/>
                 <Button Text="Álbum" HorizontalOptions="Center" VerticalOptions="Center" Clicked="ViewCellPlusMusicPlaylistAddAlbumName_Clicked" CommandParameter="{Binding .}">
                     <Button.ImageSource>
@@ -73,8 +72,8 @@
                     </Button.ImageSource>
                 </Button>
             </StackLayout>
-            <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicDetailsAddAlbumIsVisible}" VerticalOptions="EndAndExpand">
-                <xcc:FloatingLabelEntry x:Name="txtAlbumName" Placeholder="Nome Álbum" VerticalOptions="Fill" HorizontalOptions="FillAndExpand"/>
+            <StackLayout Orientation="Horizontal" IsVisible="{Binding MusicAlbumPopupModel.AddAlbumIsVisible}" VerticalOptions="EndAndExpand">
+                <Entry x:Name="txtAlbumName" Placeholder="Nome Álbum" VerticalOptions="Fill" HorizontalOptions="FillAndExpand"/>
                 <ImageButton HorizontalOptions="End" VerticalOptions="Center" HeightRequest="35" Clicked="ViewCellPlusMusicPlaylistAddAlbumName_Clicked" CommandParameter="{Binding .}">
                     <ImageButton.Source>
                         <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.PlusCircle}" Size="40" Color="Black"/>
@@ -87,7 +86,7 @@
                 </ImageButton>
             </StackLayout>
         </Grid>
-        <Grid Grid.Row="2" IsVisible="{Binding MusicDetailsFormDownloadIsVisible}">
+        <Grid Grid.Row="2" IsVisible="{Binding MusicAlbumPopupModel.FormDownloadIsVisible}">
             <StackLayout Orientation="Horizontal" Spacing="2">
                 <Button Text="Iniciar"  HorizontalOptions="Start"/>
                 <ProgressBar VerticalOptions="End" HorizontalOptions="FillAndExpand" HeightRequest="2" Margin="0,0,0,5" Progress="{Binding Download.Progress}"/>

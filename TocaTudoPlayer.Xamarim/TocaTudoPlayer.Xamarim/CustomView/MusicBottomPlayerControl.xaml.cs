@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MarcTron.Plugin;
+using System;
+using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
@@ -6,26 +8,22 @@ namespace TocaTudoPlayer.Xamarim
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class MusicBottomPlayerControl : StackLayout
-    {       
-        public static readonly BindableProperty ViewModelProperty = BindableProperty.Create(nameof(ViewModel), typeof(IMusicBottomPlayerViewModel), typeof(IMusicBottomPlayerViewModel));
+    {
+        public static readonly BindableProperty ViewModelProperty = BindableProperty.Create(nameof(ViewModel), typeof(MusicBottomPlayerViewModel), typeof(MusicBottomPlayerViewModel));
 
-        private bool _lettersInRigthProgress;
-        private bool _runMusicStatusLabelTimer;
+        private LetterUpdate _letterUpdate;
         public MusicBottomPlayerControl()
         {
             InitializeComponent();
-
-            _lettersInRigthProgress = false;
-            _runMusicStatusLabelTimer = false;
         }
-        public IMusicBottomPlayerViewModel ViewModel
+        public MusicBottomPlayerViewModel ViewModel
         {
-            get 
+            get
             {
-                return (IMusicBottomPlayerViewModel)GetValue(ViewModelProperty);
+                return (MusicBottomPlayerViewModel)GetValue(ViewModelProperty);
             }
-            set 
-            { 
+            set
+            {
                 SetValue(ViewModelProperty, value);
 
                 BindingContext = ViewModel;
@@ -34,35 +32,29 @@ namespace TocaTudoPlayer.Xamarim
                 ViewModel.MusicStreamProgessEvent += ViewModel_MusicStreamProgessEvent;
                 ViewModel.ActivePlayer += ViewModel_ActivePlayer;
                 ViewModel.StopPlayer += ViewModel_StopPlayer;
-
-
-                MusicStatusLabelTimer();
             }
         }
         protected override void OnParentSet()
         {
-            _runMusicStatusLabelTimer = false;
             base.OnParentSet();
         }
-        private void ViewModel_MusicPlayerLoadedEvent(float musicMaxDuration)
+        private void ViewModel_MusicPlayerLoadedEvent(object sender, float musicMaxDuration)
         {
             progressBar.Value = 0;
             progressBar.Minimum = 0;
             progressBar.Maximum = musicMaxDuration;
 
-            _runMusicStatusLabelTimer = true;
+            Task.Run(async () => await MusicStatusLabelTimer());
         }
-        private void ViewModel_MusicStreamProgessEvent(float progress)
+        private void ViewModel_MusicStreamProgessEvent(object sender, float progress)
         {
             progressBar.Value = progress;
         }
-        private void ViewModel_ActivePlayer()
+        private void ViewModel_ActivePlayer(object sender, EventArgs e)
         {
-            _runMusicStatusLabelTimer = true;
         }
-        private void ViewModel_StopPlayer()
+        private void ViewModel_StopPlayer(object sender, EventArgs e)
         {
-            _runMusicStatusLabelTimer = false;
         }
         private void ProgressBar_DragStarted(object sender, EventArgs e)
         {
@@ -72,63 +64,22 @@ namespace TocaTudoPlayer.Xamarim
         {
             Slider slider = (Slider)sender;
 
-            ViewModel.ProgressBarDragCompletedCommand.Execute((int)slider.Value);
+            ViewModel.ProgressBarDragCompletedCommand.Execute(AppHelper.ExoplayerTimeToTocaTudo((int)slider.Value));
         }
         private void ProgressBar_ValueChanged(object sender, ValueChangedEventArgs e)
         {
-            ViewModel.UpdateMusicPartTimeDesc((int)e.NewValue);
+            ViewModel.UpdateMusicPartTimeDesc(AppHelper.ExoplayerTimeToTocaTudo((long)e.NewValue));
         }
-        private void MusicStatusLabelTimer()
+        private async Task MusicStatusLabelTimer()
         {
-            bool deviceTimerAppearing = true;
-            Device.StartTimer(TimeSpan.FromMilliseconds(80), () =>
+            if (_letterUpdate != null)
             {
-                if (!_runMusicStatusLabelTimer)
-                {
-                    lblNomeAbum.TranslationX = 0;
-                    return true;
-                }
+                _letterUpdate.Dispose();
+                _letterUpdate = null;
+            }
 
-                if (lblNomeAbum.Width == stlAlbum.Width || lblNomeAbum.Text == null)
-                {
-                    lblNomeAbum.TranslationX = 0;
-                    return true;
-                }
-
-                int letterExtraSpaceRigthProgress = ((int)(lblNomeAbum.Width - stlAlbum.Width) - lblNomeAbum.Text.Length) + 2;
-                if (Width > 0 && lblNomeAbum.TranslationX <= -(lblNomeAbum.Text.Length + letterExtraSpaceRigthProgress))
-                {
-                    _lettersInRigthProgress = true;
-                }
-
-                if (Width > 0 && lblNomeAbum.TranslationX >= 0 && deviceTimerAppearing)
-                {
-                    _lettersInRigthProgress = false;
-                    deviceTimerAppearing = false;
-                }
-
-                if (Width > 0 && lblNomeAbum.TranslationX >= 2)
-                {
-                    _lettersInRigthProgress = false;
-                }
-
-                if (_lettersInRigthProgress)
-                {
-                    lblNomeAbum.TranslationX += 2f;
-                }
-
-                if (!_lettersInRigthProgress)
-                {
-                    lblNomeAbum.TranslationX -= 2f;
-                }
-
-                Device.BeginInvokeOnMainThread(() =>
-                {
-                    MusicStatusLabelTimer();
-                });
-
-                return false;
-            });
+            _letterUpdate = new LetterUpdate();
+            await _letterUpdate.Translate(lblNomeAbum, stlAlbum);
         }
-    }
+    }   
 }

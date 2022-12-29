@@ -2,15 +2,14 @@
 <StackLayout xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" 
              xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
-             xmlns:localVM="clr-namespace:TocaTudoPlayer.Xamarim.ViewModel.CustomView"
-             x:DataType="localVM:MusicBottomPlayerViewModel"
+             x:DataType="local:MusicBottomPlayerViewModel"
              x:Class="TocaTudoPlayer.Xamarim.MusicBottomPlayerControl"
              VerticalOptions="EndAndExpand" Spacing="0" BackgroundColor="#212529"
              IsVisible="{Binding BottomPlayerControlIsVisible}">
     <Grid x:Name="gridTeste" Grid.Row="0" RowSpacing="0" ColumnSpacing="3">
         <Grid.RowDefinitions>
-            <RowDefinition Height="35"/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="22"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -19,7 +18,7 @@
         </Grid.ColumnDefinitions>
         <Image Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand" IsVisible="{Binding MusicStatusBottomModel.BottomPlayerLoadingIsVisible}" Source="loadingPlayer.gif" IsAnimationPlaying="true"/>
         <Image Grid.Row="0" Grid.Column="0" HorizontalOptions="Start" IsVisible="{Binding MusicStatusBottomModel.BottomPlayerIsVisible}" Source="{Binding MusicStatusBottomModel.MusicImage}"/>
-        <StackLayout x:Name="stlAlbum" Grid.Row="0" Grid.Column="1" Margin="0, 4" VerticalOptions="StartAndExpand" HorizontalOptions="FillAndExpand" Orientation="Vertical" IsVisible="{Binding MusicStatusBottomModel.BottomPlayerIsVisible}" Spacing="0">
+        <StackLayout x:Name="stlAlbum" Grid.Row="0" Grid.Column="1" Margin="0, 2" VerticalOptions="StartAndExpand" HorizontalOptions="FillAndExpand" Orientation="Vertical" IsVisible="{Binding MusicStatusBottomModel.BottomPlayerIsVisible}" Spacing="0">
             <ScrollView VerticalOptions="EndAndExpand" VerticalScrollBarVisibility="Never" HorizontalScrollBarVisibility="Never" Orientation="Horizontal" HorizontalOptions="Fill">
                 <Label x:Name="lblNomeAbum" Text="{Binding MusicStatusBottomModel.MusicName}" Grid.Column="1" LineBreakMode="NoWrap" TextColor="White" FontSize="12"/>
             </ScrollView>

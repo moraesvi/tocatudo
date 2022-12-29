@@ -22,7 +22,7 @@ namespace TocaTudoPlayer.Xamarim
         {
             _lstUserAlbum?.Clear();
         }
-        public async Task<bool> SaveAlbumOnLocalDb(AlbumModel album, (bool, byte[]) tpMusic)
+        public async Task<bool> SaveAlbumOnLocalDb(AlbumModel album, (bool, byte[], object) tpMusic)
         {
             if (album == null)
                 return false;
@@ -31,7 +31,7 @@ namespace TocaTudoPlayer.Xamarim
 
             await LoadDb();
 
-            UserAlbum userAlbum = _lstUserAlbum.Where(al => string.Equals(al.UAlbumlId, album.UAlbumlId))
+            UserAlbum userAlbum = _lstUserAlbum.Where(al => string.Equals(al.VideoId, album.VideoId))
                                                .FirstOrDefault();
             if (userAlbum != null)
             {
@@ -40,14 +40,17 @@ namespace TocaTudoPlayer.Xamarim
             }
             else
             {
-                userAlbum = new UserAlbum(album);
+                userAlbum = new UserAlbum(album, tpMusic.Item1);
+                userAlbum.DateTimeIn = DateTimeOffset.UtcNow.ToString();
 
                 _lstUserAlbum.Add(userAlbum);
             }
 
             try
             {
-                musicSaved = await _pclStorage.SaveFile(UserMusic.UserMusicSavedLocalKey, _lstUserAlbum);
+                userAlbum.MusicPath = userAlbum.GetFileNameLocalPath();
+                musicSaved = await _pclStorage.SaveFile(UserAlbum.UserAlbumSavedLocalKey, _lstUserAlbum);
+
                 await File.WriteAllBytesAsync(userAlbum.MusicPath, tpMusic.Item2);
             }
             catch
@@ -63,12 +66,12 @@ namespace TocaTudoPlayer.Xamarim
         {
             return _lstUserAlbum;
         }
-        public async Task<(UserAlbum, byte[])> GetAlbumById(string uAlbumlId)
+        public async Task<(UserAlbum, byte[])> GetAlbumById(string videoId)
         {
             if (_lstUserAlbum == null)
                 return (null, null);
 
-            UserAlbum userAlbum = _lstUserAlbum.Where(lu => string.Equals(lu.UAlbumlId, uAlbumlId))
+            UserAlbum userAlbum = _lstUserAlbum.Where(lu => string.Equals(lu.VideoId, videoId))
                                                .FirstOrDefault();
 
             if (userAlbum == null)
@@ -83,12 +86,12 @@ namespace TocaTudoPlayer.Xamarim
 
             return (userAlbum, music);
         }
-        public bool ExistsOnLocalDb(string uAlbumId)
+        public bool ExistsOnLocalDb(string videoId)
         {
             if (_lstUserAlbum == null)
                 return false;
 
-            return _lstUserAlbum.Exists(lu => string.Equals(lu.UAlbumlId, uAlbumId));
+            return _lstUserAlbum.Exists(lu => string.Equals(lu.VideoId, videoId));
         }
     }
 }

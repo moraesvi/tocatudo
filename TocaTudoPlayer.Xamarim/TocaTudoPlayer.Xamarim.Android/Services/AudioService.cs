@@ -1,6 +1,7 @@
 ﻿using Android.App;
 using Android.Content;
 using Android.Graphics;
+using Android.Hardware.Lights;
 using Android.Media;
 using Android.Media.Session;
 using Android.OS;
@@ -9,32 +10,33 @@ using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
 using AndroidX.Core.App;
 using Com.Google.Android.Exoplayer2;
+using Com.Google.Android.Exoplayer2.Audio;
 using Com.Google.Android.Exoplayer2.Source;
 using Com.Google.Android.Exoplayer2.Trackselection;
 using Com.Google.Android.Exoplayer2.Upstream;
-using Com.Google.Android.Exoplayer2.Util;
-using Java.Net;
 using Plugin.CurrentActivity;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using TocaTudo;
 using TocaTudoPlayer.Xamarim;
+using Xamarin.CommunityToolkit.Helpers;
 using Xamarin.Forms;
 using static Android.Media.AudioManager;
+using static Com.Google.Android.Exoplayer2.IPlayer;
 
-[assembly: Dependency(typeof(AudioService))]
 namespace TocaTudo
 {
-    [Service]
-    [IntentFilter(new[] { ActionSource, ActionPlay, ActionPause, ActionStop, ActionNext, ActionPrevious, ActionTogglePlayback, ActionSeek, ActionHeadphonesUnplugged })]
-    public class AudioService : Service, IOnAudioFocusChangeListener, IPlayerEventListener, IDataSourceFactory
+    [Service(Exported = true)]
+    [IntentFilter(new[] { ActionSource, ActionPlay, ActionPause, ActionStop, ActionNext, ActionPrevious, ActionTogglePlayback, ActionSeek, ActionHeadphonesUnplugged, ActionClearSource, ActionHidePlayerControls })]
+    public class AudioService : Service, IOnAudioFocusChangeListener, IEventListener, IDataSource.IFactory
     {
         private const string TAG = "TocaTudo";
         private const string CHANNEL_ID = "toca_tudo_channel_01";
 
+        private const int PLAYER_TYPE_UNDEFINED = -1;
         private const int PLAYER_TYPE_ALBUM = 0;
         private const int PLAYER_TYPE_MUSIC = 1;
+        private const int PLAYER_TYPE_ALBUM_MUSIC = 2;
 
         public const string ActionSource = "com.xamarin.action.SOURCE";
         public const string ActionPlay = "com.xamarin.action.PLAY";
@@ -45,25 +47,29 @@ namespace TocaTudo
         public const string ActionTogglePlayback = "com.xamarin.action.TOGGLEPLAYBACK";
         public const string ActionSeek = "com.xamarin.action.SEEK";
         public const string ActionHeadphonesUnplugged = "com.xamarin.action.HEADPHONES_UNPLUGGED";
+        public const string ActionClearSource = "com.xamarin.action.CLEAR_SOURCE";
+        public const string ActionHidePlayerControls = "com.xamarin.action.HIDE_PLAYER_CONTROLS";
 
-        private event Action _playerInitializing;
-        private event Action _playerReady;
-        private event Action _playerReadyBuffering;
-        private event Action _playerSeekComplete;
-        private event Action<PlaylistItemServicePlayer> _playerPlaylistChanged;
-        private event Action _playerInvalidUri;
-        private event Action _playerLosedAudioFocus;
+        private readonly WeakEventManager _playerInitializing;
+        private readonly WeakEventManager _playerReady;
+        private readonly WeakEventManager _playerReadyBuffering;
+        private readonly WeakEventManager _playerSeekComplete;
+        private readonly WeakEventManager<bool> _playingChanged;
+        private readonly WeakEventManager<ItemServicePlayer> _playerPlaylistChanged;
+        private readonly WeakEventManager _playerInvalidUri;
+        private readonly WeakEventManager _playerLosedAudioFocus;
+        private static WeakEventManager<Exception> _playerException;
 
-        private SimpleExoPlayer _exoPlayer;
+        private static SimpleExoPlayer _exoPlayer;
         public NotificationManager _notificationManager;
-        //private AudioManager _audioManager;
 
         private MusicBroadcast _broadcastReceiver;
 
         private bool _isPlaying;
+        private bool _stopMediaCompatPlayerNavigation;
         private bool _rebuildTimerPlayer;
-
-        private string _url;
+        private bool _callPlayerActiveEvent;
+        private bool _exceptionThrown;
 
         private Context _context;
         private IMediaSource _extractorMediaSource;
@@ -73,24 +79,61 @@ namespace TocaTudo
         private MediaSessionManager _mediaSessionManager;
         private MediaSessionCompat _mediaSession;
         private MediaControllerCompat _mediaController;
-        private Android.Support.V4.Media.Session.MediaControllerCompat.TransportControls _transportControls;
+        private MediaControllerCompat.TransportControls _transportControls;
 
-        private AlbumModelServicePlayer _albumModel;
+        private (string AlbumName, string MusicName, byte[] Image) _tuppleAlbum;
+        private (string AlbumName, string MusicName, long TotalMilliseconds, byte[] Image) _tuppleAlbumDetails;
+
         private MusicModelServicePlayer _musicModel;
-        private PlaylistItemServicePlayer _playlistItem;
-        private MainActivity _mainActivity;
+
+        private ItemServicePlayer[] _albumPlaylist;
+        private ItemServicePlayer _playlistItem;
+        private static MainActivity _mainActivity;
 
         private int _playlistMusicActiveIndex;
+        private int _lastPlaylistMusicActivedIndex;
 
         public AudioService()
         {
             _context = Android.App.Application.Context;
             _broadcastReceiver = new MusicBroadcast(this);
             _mainActivity = CrossCurrentActivity.Current.Activity as MainActivity;
+
+            _playerInitializing = new WeakEventManager();
+            _playerReady = new WeakEventManager();
+            _playerReadyBuffering = new WeakEventManager();
+            _playerSeekComplete = new WeakEventManager();
+            _playingChanged = new WeakEventManager<bool>();
+            _playerPlaylistChanged = new WeakEventManager<ItemServicePlayer>();
+            _playerInvalidUri = new WeakEventManager();
+            _playerLosedAudioFocus = new WeakEventManager();
+
+            _lastPlaylistMusicActivedIndex = -1;
+            _stopMediaCompatPlayerNavigation = false;
+        }
+        public static void Init()
+        {
+            _playerException = new WeakEventManager<Exception>();
+            _mainActivity = CrossCurrentActivity.Current.Activity as MainActivity;
+        }
+        public static void Reset()
+        {
+            if (_exoPlayer != null)
+            {
+                _exoPlayer.Volume = 0.5f;
+                _exoPlayer.Stop();
+                _exoPlayer.Release();
+                _exoPlayer = null;
+            }
         }
         internal MediaSessionCompat MediaSessionCompat => _mediaSession;
-        internal Android.Support.V4.Media.Session.MediaControllerCompat.TransportControls TransportControls => _transportControls;
-        internal AlbumModelServicePlayer AlbumModel => _albumModel;
+        internal MediaControllerCompat.TransportControls TransportControls => _transportControls;
+        /// <summary>
+        internal bool AlbumMusicModelMode => _albumPlaylist?.Count() > 0;
+        /// </summary>
+        //internal AlbumMusicModelServicePlayer AlbumMusicModel => _albumMusicModel;
+        internal MusicModelServicePlayer MusicModelService => _musicModel;
+        internal ItemServicePlayer PlaylistItemService => _playlistItem;
         internal bool RebuildTimerPlayer
         {
             get => _rebuildTimerPlayer;
@@ -101,96 +144,97 @@ namespace TocaTudo
         {
             get
             {
-                return _isPlaying;
+                return _isPlaying || (_exoPlayer?.IsPlaying ?? false);
             }
             set
             {
                 _isPlaying = value;
             }
         }
-        public event Action PlayerInitializing
+        public event EventHandler PlayerInitializing
         {
-            add
-            {
-                _playerInitializing += value;
-            }
-            remove
-            {
-                _playerInitializing -= value;
-            }
+            add => _playerInitializing.AddEventHandler(value);
+            remove => _playerInitializing.RemoveEventHandler(value);
         }
-        public event Action PlayerReady
+        public event EventHandler PlayerReady
         {
-            add
-            {
-                _playerReady += value;
-            }
-            remove
-            {
-                _playerReady -= value;
-            }
+            add => _playerReady.AddEventHandler(value);
+            remove => _playerReady.RemoveEventHandler(value);
         }
-        public event Action PlayerReadyBuffering
+        public event EventHandler PlayerReadyBuffering
         {
-            add
-            {
-                _playerReadyBuffering += value;
-            }
-            remove
-            {
-                _playerReadyBuffering -= value;
-            }
+            add => _playerReadyBuffering.AddEventHandler(value);
+            remove => _playerReadyBuffering.RemoveEventHandler(value);
         }
-        public event Action PlayerSeekComplete
+        public event EventHandler PlayerSeekComplete
         {
-            add
-            {
-                _playerSeekComplete += value;
-            }
-            remove
-            {
-                _playerSeekComplete -= value;
-            }
+            add => _playerSeekComplete.AddEventHandler(value);
+            remove => _playerSeekComplete.RemoveEventHandler(value);
         }
-        public event Action<PlaylistItemServicePlayer> PlayerPlaylistChanged
+        public event EventHandler<bool> PlayingChanged
         {
-            add => _playerPlaylistChanged += value;
-            remove => _playerPlaylistChanged -= value;
+            add => _playingChanged.AddEventHandler(value);
+            remove => _playingChanged.RemoveEventHandler(value);
         }
-        public event Action PlayerInvalidUri
+        public event EventHandler<ItemServicePlayer> PlayerPlaylistChanged
         {
-            add => _playerInvalidUri += value;
-            remove => _playerInvalidUri -= value;
+            add => _playerPlaylistChanged.AddEventHandler(value);
+            remove => _playerPlaylistChanged.RemoveEventHandler(value);
         }
-        public event Action PlayerLosedAudioFocus
+        public event EventHandler PlayerInvalidUri
         {
-            add => _playerLosedAudioFocus += value;
-            remove => _playerLosedAudioFocus -= value;
+            add => _playerInvalidUri.AddEventHandler(value);
+            remove => _playerInvalidUri.RemoveEventHandler(value);
+        }
+        public event EventHandler PlayerLosedAudioFocus
+        {
+            add => _playerLosedAudioFocus.AddEventHandler(value);
+            remove => _playerLosedAudioFocus.RemoveEventHandler(value);
+        }
+        public static event EventHandler<Exception> PlayerException
+        {
+            add => _playerException.AddEventHandler(value);
+            remove => _playerException.RemoveEventHandler(value);
         }
         public override void OnCreate()
         {
             base.OnCreate();
 
+            if (_exoPlayer != null)
+            {
+                _exoPlayer.Volume = 0.5f;
+                _exoPlayer.Stop();
+                _exoPlayer.Release();
+                _exoPlayer = null;
+            }
+
             if (Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
             {
                 CreateChannel();
+
+                Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                                                                  .SetContentTitle("")
+                                                                  .SetContentText("")
+                                                                  .Build();
+
+                StartForeground(1, notification);
             }
         }
         private void CreateChannel()
         {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "TocaTudo", NotificationImportance.Default);
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, TAG, NotificationImportance.Default);
             channel.SetSound(null, null);
             channel.EnableLights(true);
 
-            ((NotificationManager)GetSystemService(Context.NotificationService)).CreateNotificationChannel(channel);
+            ((NotificationManager)GetSystemService(NotificationService)).CreateNotificationChannel(channel);
         }
         private void InitMediaSession()
         {
             if (_mediaSessionManager != null)
                 return;
 
-            _mediaSessionManager = (MediaSessionManager)GetSystemService(Context.MediaSessionService);
-            _mediaSession = new MediaSessionCompat(ApplicationContext, "TocaTudo");
+            _mediaSessionManager = (MediaSessionManager)GetSystemService(MediaSessionService);
+            _mediaSession = new MediaSessionCompat(ApplicationContext, TAG);
             _transportControls = _mediaSession.Controller.GetTransportControls();
 
             _mediaSession.Active = true;
@@ -203,6 +247,7 @@ namespace TocaTudo
 
             switch (GetPlayerType())
             {
+                case PLAYER_TYPE_ALBUM_MUSIC:
                 case PLAYER_TYPE_ALBUM:
                     _mediaSession.SetPlaybackState(new PlaybackStateCompat.Builder()
                                                       .SetActions(PlaybackState.ActionPlayPause | PlaybackState.ActionPlay | PlaybackState.ActionSkipToNext)
@@ -217,22 +262,30 @@ namespace TocaTudo
         }
         private int GetPlayerType()
         {
-            if (_mainActivity.AlbumModelServicePlayerParameter != null)
+            if (MainActivity.AlbumModelServicePlayerParameter != null)
                 return PLAYER_TYPE_ALBUM;
-            else if (_mainActivity.MusicModelServicePlayerParameter != null)
+            else if (MainActivity.MusicModelServicePlayerParameter != null)
                 return PLAYER_TYPE_MUSIC;
+            else if (MainActivity.AlbumMusicModelServicePlayerParameter != null)
+                return PLAYER_TYPE_ALBUM_MUSIC;
 
-            return PLAYER_TYPE_ALBUM;
+            return PLAYER_TYPE_UNDEFINED;
         }
         private void StopNotification()
         {
+            _notificationManager?.Cancel(1);
             _notificationManager?.CancelAll();
         }
-        internal void BuildNotification(bool isPlaying, int indicePlaylist, AlbumModelServicePlayer albumModel, PlaylistItemServicePlayer playlistItem)
+        internal void BuildNotification(bool isPlaying, int indicePlaylist, (string AlbumName, string MusicName, byte[] Image) tuppleDetails, ItemServicePlayer[] playlist)
         {
+            if (tuppleDetails.Image == null)
+                return;
+            if (playlist == null || playlist.Count() == 0)
+                return;
+
             NotificationCompat.Builder builder = null;
 
-            if (Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
             {
                 builder = new NotificationCompat.Builder(this, CHANNEL_ID);
             }
@@ -241,8 +294,8 @@ namespace TocaTudo
                 builder = new NotificationCompat.Builder(this);
             }
 
-            BuildNotificationVisible(builder, albumModel, playlistItem);
-            BuildNotificationVisibleActions(builder, isPlaying, indicePlaylist, albumModel, playlistItem);
+            BuildNotificationVisible(builder, tuppleDetails);
+            BuildNotificationVisibleActions(builder, isPlaying, indicePlaylist, playlist.Count() - 1);
         }
         internal void BuildNotification(bool isPlaying, MusicModelServicePlayer musicModel)
         {
@@ -260,68 +313,122 @@ namespace TocaTudo
             BuildNotificationVisible(builder, musicModel);
             BuildNotificationVisibleActions(builder, isPlaying, musicModel);
         }
-        private void BuildNotificationVisible(NotificationCompat.Builder builder, AlbumModelServicePlayer albumModel, PlaylistItemServicePlayer playlistItem)
+        private void BuildNotificationVisible(NotificationCompat.Builder builder, (string AlbumName, string MusicName, byte[] Image) tuppleAlbum)
         {
-            Bitmap albumArt = BitmapFactory.DecodeByteArray(albumModel.Image, 0, albumModel.Image.Length);
+            Bitmap albumArt = BitmapFactory.DecodeByteArray(tuppleAlbum.Image, 0, tuppleAlbum.Image?.Length ?? 0);
 
             builder.SetSmallIcon(Resource.Drawable.icon)
                    .SetContentIntent(_mediaSession.Controller.SessionActivity)
                    .SetVisibility(NotificationCompat.VisibilityPublic)
-                   .SetLargeIcon(albumArt)
-                   .SetContentText(albumModel.AlbumName)
-                   .SetContentTitle(playlistItem.Music);
+                   .SetLargeIcon(GetResizedBitmap(albumArt, 400))
+                   .SetContentText(tuppleAlbum.AlbumName ?? string.Empty)
+                   .SetContentTitle(tuppleAlbum.MusicName);
+        }
+        public Bitmap GetResizedBitmap(Bitmap bm, int width)
+        {
+            double aspectRatio = bm.Width / (float)bm.Height;
+            double height = Math.Round(width / aspectRatio);
+
+            Bitmap resizedBitmap = Bitmap.CreateScaledBitmap(bm, width, (int)height, false);
+
+            return resizedBitmap;
         }
         private void BuildNotificationVisible(NotificationCompat.Builder builder, MusicModelServicePlayer musicModel)
         {
-            Bitmap albumArt = BitmapFactory.DecodeByteArray(musicModel.Image, 0, musicModel.Image.Length);
+            if (musicModel == null || musicModel.Image == null)
+                return;
+
+            Bitmap albumArt = BitmapFactory.DecodeByteArray(musicModel?.Image, 0, musicModel?.Image?.Length ?? 0);
 
             builder.SetSmallIcon(Resource.Drawable.icon)
                    .SetContentIntent(_mediaSession.Controller.SessionActivity)
                    .SetVisibility(NotificationCompat.VisibilityPublic)
-                   .SetLargeIcon(albumArt)
+                   .SetLargeIcon(GetResizedBitmap(albumArt, 400))
                    .SetContentTitle(musicModel.Music);
         }
-        private void BuildNotificationVisibleActions(NotificationCompat.Builder builder, bool isPlaying, int indicePlaylist, AlbumModelServicePlayer albumModel, PlaylistItemServicePlayer playlistItem)
+        private void BuildHideNotification((string AlbumName, string MusicName, byte[] Image) tuppleAlbum)
+        {
+            if (string.IsNullOrEmpty(tuppleAlbum.AlbumName))
+                return;
+
+            NotificationCompat.Builder builder = null;
+
+            if (Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
+            {
+                builder = new NotificationCompat.Builder(this, CHANNEL_ID);
+            }
+            else
+            {
+                builder = new NotificationCompat.Builder(this);
+            }
+
+            builder.SetSmallIcon(Resource.Drawable.icon)
+                   .SetContentIntent(_mediaSession.Controller.SessionActivity)
+                   .SetVisibility(NotificationCompat.VisibilityPublic);
+
+            BuildHideNotificationActions(builder);
+        }
+        private void BuildNotificationVisibleActions(NotificationCompat.Builder builder, bool isPlaying, int indicePlaylist, int totalItens)
         {
             AndroidX.Media.App.NotificationCompat.MediaStyle mediaStyle = new AndroidX.Media.App.NotificationCompat
                                                                                                 .MediaStyle()
                                                                                                 .SetMediaSession(_mediaSession.SessionToken);
             Intent previousIntent = new Intent();
             previousIntent.SetAction(ActionPrevious);
-            PendingIntent pPreviousIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, previousIntent, PendingIntentFlags.UpdateCurrent);
+            PendingIntent pPreviousIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, previousIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 
             Intent nextIntent = new Intent();
             nextIntent.SetAction(ActionNext);
-            PendingIntent pNextIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, nextIntent, PendingIntentFlags.UpdateCurrent);
-
-            builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_previous, ActionPrevious, pPreviousIntent).Build());
-            BuildNotificationActionPlayPause(builder, isPlaying);
-            builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_next, ActionNext, pNextIntent).Build());
-
-            if (indicePlaylist > 0)
-                mediaStyle.SetShowActionsInCompactView(0, 1, 2);
-            else if (indicePlaylist < albumModel.Playlist.Count() - 1)
-                mediaStyle.SetShowActionsInCompactView(1, 2);
-
-            builder.SetStyle(mediaStyle);
+            PendingIntent pNextIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, nextIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 
             IntentFilter intentFilter = new IntentFilter();
-            intentFilter.AddAction(ActionPlay);
-            intentFilter.AddAction(ActionPause);
-            intentFilter.AddAction(ActionPrevious);
-            intentFilter.AddAction(ActionNext);
+
+            if (_albumPlaylist.Count() == 1)
+            {
+                BuildNotificationActionPlayPause(builder, isPlaying);
+
+                mediaStyle.SetShowActionsInCompactView(0);
+
+                builder.SetStyle(mediaStyle);
+
+                intentFilter.AddAction(ActionPlay);
+                intentFilter.AddAction(ActionPause);
+            }
+            else
+            {
+                builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_previous, ActionPrevious, pPreviousIntent).Build());
+                BuildNotificationActionPlayPause(builder, isPlaying);
+                builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_next, ActionNext, pNextIntent).Build());
+
+                if (indicePlaylist == totalItens)
+                    mediaStyle.SetShowActionsInCompactView(0, 1);
+                else if (indicePlaylist > 0)
+                    mediaStyle.SetShowActionsInCompactView(0, 1, 2);
+                else if (indicePlaylist < totalItens)
+                    mediaStyle.SetShowActionsInCompactView(1, 2);
+
+                builder.SetStyle(mediaStyle);
+
+                intentFilter.AddAction(ActionPlay);
+                intentFilter.AddAction(ActionPause);
+                intentFilter.AddAction(ActionPrevious);
+                intentFilter.AddAction(ActionNext);
+            }
 
             ApplicationContext.RegisterReceiver(_broadcastReceiver, intentFilter);
 
             Notification notification = builder.Build();
 
-            _notificationManager = (NotificationManager)GetSystemService(Context.NotificationService);
+            _notificationManager = (NotificationManager)GetSystemService(NotificationService);
             _notificationManager.Notify(1, notification);
 
             StartForeground(1, notification);
         }
         private void BuildNotificationVisibleActions(NotificationCompat.Builder builder, bool isPlaying, MusicModelServicePlayer musicModel)
         {
+            if (musicModel == null)
+                return;
+
             AndroidX.Media.App.NotificationCompat.MediaStyle mediaStyle = new AndroidX.Media.App.NotificationCompat
                                                                                                 .MediaStyle()
                                                                                                 .SetMediaSession(_mediaSession.SessionToken);
@@ -340,7 +447,7 @@ namespace TocaTudo
 
             Notification notification = builder.Build();
 
-            _notificationManager = (NotificationManager)GetSystemService(Context.NotificationService);
+            _notificationManager = (NotificationManager)GetSystemService(NotificationService);
             _notificationManager.Notify(1, notification);
 
             StartForeground(1, notification);
@@ -351,7 +458,7 @@ namespace TocaTudo
             {
                 Intent playIntent = new Intent();
                 playIntent.SetAction(ActionPlay);
-                PendingIntent pPlayIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, playIntent, PendingIntentFlags.UpdateCurrent);
+                PendingIntent pPlayIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, playIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 
                 builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_play, ActionPlay, pPlayIntent).Build());
             }
@@ -359,62 +466,84 @@ namespace TocaTudo
             {
                 Intent pauseIntent = new Intent();
                 pauseIntent.SetAction(ActionPause);
-                PendingIntent pPauseIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, pauseIntent, PendingIntentFlags.UpdateCurrent);
+                PendingIntent pPauseIntent = PendingIntent.GetBroadcast(ApplicationContext, 0, pauseIntent, PendingIntentFlags.UpdateCurrent | PendingIntentFlags.Immutable);
 
                 builder.AddAction(new NotificationCompat.Action.Builder(Resource.Drawable.exo_icon_pause, ActionPause, pPauseIntent).Build());
             }
         }
-        internal void UpdateMetaData(AlbumModelServicePlayer albumModel)
+        private void BuildHideNotificationActions(NotificationCompat.Builder builder)
         {
-            PlaylistItemServicePlayer startPlaylistItem = albumModel.Playlist[0];
-            Bitmap albumArt = BitmapFactory.DecodeByteArray(albumModel.Image, 0, albumModel.Image.Length);
+            AndroidX.Media.App.NotificationCompat.MediaStyle mediaStyle = new AndroidX.Media.App.NotificationCompat
+                                                                                                .MediaStyle()
+                                                                                                .SetMediaSession(_mediaSession.SessionToken);
+            //mediaStyle.SetShowActionsInCompactView(0);
+            builder.SetStyle(mediaStyle);
+
+            Notification notification = builder.Build();
+
+            _notificationManager = (NotificationManager)GetSystemService(NotificationService);
+            _notificationManager.Notify(1, notification);
+
+            StartForeground(1, notification);
+        }
+        internal void UpdateMetaData((string AlbumName, string MusicName, long TotalMilliseconds, byte[] Image) tuppleAlbum, ItemServicePlayer[] playlist, int trackNumber)
+        {
+            if (tuppleAlbum.Image == null)
+                return;
+
+            Bitmap albumArt = BitmapFactory.DecodeByteArray(tuppleAlbum.Image, 0, tuppleAlbum.Image?.Length ?? 0);
 
             _mediaSession.SetMetadata(new MediaMetadataCompat.Builder()
                          .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, albumArt)
-                         .PutString(MediaMetadataCompat.MetadataKeyArtist, albumModel.AlbumName)
-                         .PutString(MediaMetadataCompat.MetadataKeyTitle, startPlaylistItem.Music)
-                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, startPlaylistItem.TotalMilliseconds * 1000)
-                         .PutLong(MediaMetadataCompat.MetadataKeyTrackNumber, 1)
-                         .PutLong(MediaMetadataCompat.MetadataKeyNumTracks, albumModel.Playlist.Count())
+                         .PutString(MediaMetadataCompat.MetadataKeyArtist, tuppleAlbum.AlbumName)
+                         .PutString(MediaMetadataCompat.MetadataKeyTitle, tuppleAlbum.MusicName)
+                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, AppHelper.ExoplayerTimeToTocaTudo(tuppleAlbum.TotalMilliseconds))
+                         .PutLong(MediaMetadataCompat.MetadataKeyTrackNumber, trackNumber + 1)
+                         .PutLong(MediaMetadataCompat.MetadataKeyNumTracks, playlist.Count())
                          .Build());
         }
-        internal void UpdateMetaData(AlbumModelServicePlayer albumModel, PlaylistItemServicePlayer playlistItem)
+        internal void UpdateMetaData((string AlbumName, string MusicName, long TotalMilliseconds, byte[] Image) tuppleAlbum, PlaylistItemServicePlayer[] playlistItem, int trackNumber)
         {
-            Bitmap albumArt = BitmapFactory.DecodeByteArray(albumModel.Image, 0, albumModel.Image.Length);
+            if (tuppleAlbum.Image == null)
+                return;
+
+            Bitmap albumArt = BitmapFactory.DecodeByteArray(tuppleAlbum.Image, 0, tuppleAlbum.Image.Length);
 
             _mediaSession.SetMetadata(new MediaMetadataCompat.Builder()
                          .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, albumArt)
-                         .PutString(MediaMetadataCompat.MetadataKeyArtist, albumModel.AlbumName)
-                         .PutString(MediaMetadataCompat.MetadataKeyTitle, playlistItem.Music)
-                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, playlistItem.TotalMilliseconds * 1000)
-                         .PutLong(MediaMetadataCompat.MetadataKeyNumTracks, albumModel.Playlist.Count())
+                         .PutString(MediaMetadataCompat.MetadataKeyArtist, tuppleAlbum.AlbumName)
+                         .PutString(MediaMetadataCompat.MetadataKeyTitle, tuppleAlbum.MusicName)
+                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, AppHelper.ExoplayerTimeToTocaTudo(tuppleAlbum.TotalMilliseconds))
+                         .PutLong(MediaMetadataCompat.MetadataKeyTrackNumber, trackNumber + 1)
+                         .PutLong(MediaMetadataCompat.MetadataKeyNumTracks, playlistItem.Count())
                          .Build());
         }
         internal void UpdateMetaData(MusicModelServicePlayer musicModel)
         {
-            Bitmap albumArt = BitmapFactory.DecodeByteArray(musicModel.Image, 0, musicModel.Image.Length);
+            if (musicModel == null || musicModel.Image == null)
+                return;
+
+            Bitmap albumArt = BitmapFactory.DecodeByteArray(musicModel?.Image, 0, musicModel?.Image?.Length ?? 0);
 
             _mediaSession.SetMetadata(new MediaMetadataCompat.Builder()
                          .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, albumArt)
                          .PutString(MediaMetadataCompat.MetadataKeyTitle, musicModel.Music)
-                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, _exoPlayer.Duration)
+                         .PutLong(MediaMetadataCompat.MetadataKeyDuration, _exoPlayer.Duration < 0 ? AppHelper.ExoplayerTimeToTocaTudo(musicModel.MusicModel.MusicTimeTotalSeconds) : _exoPlayer.Duration)
                          .PutLong(MediaMetadataCompat.MetadataKeyNumTracks, musicModel.Number)
                          .Build());
         }
-        internal void StartMediaPlaybackState(bool isPlaying)
-        {
-            if (isPlaying)
-            {
-                PlaybackStateCompat.Builder playbackstateBuilder = new PlaybackStateCompat.Builder()
-                                                                                          .SetState(PlaybackStateCompat.StatePlaying, 0, 1F);
-                _mediaSession.SetPlaybackState(playbackstateBuilder.Build());
-            }
-        }
-        internal void SetMediaPlaybackState(bool isPlaying, bool rebuildTimerPlayer, int indexPlaylist, AlbumModelServicePlayer albumModel)
+        internal void SetMediaPlaybackState(bool isPlaying, int indexPlaylist, ItemServicePlayer[] albumModel)
         {
             PlaybackStateCompat.Builder playbackstateBuilder = new PlaybackStateCompat.Builder();
 
-            bool lastItemFromPlaylist = indexPlaylist >= albumModel.Playlist.Count() - 1;
+            bool lastItemFromPlaylist = indexPlaylist >= albumModel.Count() - 1;
+            bool onlyOneItem = albumModel.Count() == 1;
+
+            if (onlyOneItem)
+            {
+                SetMediaPlaybackState(rebuildTimerPlayer: false);
+                return;
+            }
 
             if (isPlaying)
             {
@@ -438,7 +567,7 @@ namespace TocaTudo
             {
                 if (indexPlaylist == 0)
                 {
-                    playbackstateBuilder.SetActions(PlaybackStateCompat.ActionPlayPause | PlaybackStateCompat.ActionPlay | PlaybackStateCompat.ActionSkipToNext);
+                    playbackstateBuilder.SetActions(PlaybackStateCompat.ActionPlayPause | PlaybackStateCompat.ActionPause | PlaybackStateCompat.ActionSkipToNext);
                 }
                 else if (indexPlaylist > 0)
                 {
@@ -449,12 +578,18 @@ namespace TocaTudo
                 }
             }
 
-            if (rebuildTimerPlayer && IsPlaying)
-                playbackstateBuilder.SetState(PlaybackStateCompat.StatePlaying, 0, 1F);
+            if (IsPlaying)
+            {
+                playbackstateBuilder.SetState(PlaybackStateCompat.StatePlaying, _exoPlayer.CurrentPosition, 1F);
+            }
+            else
+            {
+                playbackstateBuilder.SetState(PlaybackStateCompat.StatePaused, _exoPlayer.CurrentPosition, 1F);
+            }
 
             _mediaSession.SetPlaybackState(playbackstateBuilder.Build());
         }
-        internal void SetMediaPlaybackState(bool isPlaying, bool rebuildTimerPlayer)
+        internal void SetMediaPlaybackState(bool rebuildTimerPlayer)
         {
             PlaybackStateCompat.Builder playbackstateBuilder = new PlaybackStateCompat.Builder();
 
@@ -465,6 +600,14 @@ namespace TocaTudo
                 playbackstateBuilder.SetState(PlaybackStateCompat.StatePlaying, 0, 1F);
                 _rebuildTimerPlayer = false;
             }
+            else if (IsPlaying)
+            {
+                playbackstateBuilder.SetState(PlaybackStateCompat.StatePlaying, _exoPlayer.CurrentPosition, 1F);
+            }
+            else
+            {
+                playbackstateBuilder.SetState(PlaybackStateCompat.StatePaused, _exoPlayer.CurrentPosition, 1F);
+            }
 
             _mediaSession.SetPlaybackState(playbackstateBuilder.Build());
         }
@@ -472,62 +615,92 @@ namespace TocaTudo
         [return: GeneratedEnum]
         public override StartCommandResult OnStartCommand(Intent intent, StartCommandFlags flags, int startId)
         {
-            RequestAudioFocus();
-
-            if (_mediaSessionManager == null)
+            try
             {
-                InitMediaSession();
-            }
+                _exceptionThrown = false;
 
-            switch (intent.Action)
-            {
-                case ActionSource:
-                    SetMusicSource(intent);
-                    break;
-                case ActionPlay:
-                    Play();
-                    break;
-                case ActionStop:
-                    Stop();
-                    break;
-                case ActionPause:
-                    Pause();
-                    break;
-                case ActionTogglePlayback:
-                    if (_exoPlayer == null)
-                        return StartCommandResult.Sticky;
+                if (GetPlayerType() == PLAYER_TYPE_UNDEFINED)
+                {
+                    return StartCommandResult.Sticky;
+                }
 
-                    if (_exoPlayer.IsPlaying)
-                        Pause();
-                    else
+                if (_mediaSessionManager == null)
+                {
+                    InitMediaSession();
+                }
+
+                switch (intent.Action)
+                {
+                    case ActionSource:
+                        SetMusicSource(intent);
+                        break;
+                    case ActionPlay:
                         Play();
+                        break;
+                    case ActionStop:
+                        Stop();
+                        break;
+                    case ActionPause:
+                        Pause();
+                        break;
+                    case ActionTogglePlayback:
+                        if (_exoPlayer == null)
+                            return StartCommandResult.Sticky;
 
-                    break;
-                case ActionSeek:
-                    int iSource = intent.GetIntExtra("seek", 0);
+                        if (_exoPlayer.IsPlaying)
+                            Pause();
+                        else
+                            Play();
 
-                    switch (GetPlayerType())
-                    {
-                        case PLAYER_TYPE_ALBUM:
+                        break;
+                    case ActionSeek:
+                        long iSource = intent.GetLongExtra("seek", 0);
 
-                            if (_mainActivity.PlaylistItemServicePlayerParameter != null)
-                                Seek(iSource, _mainActivity.PlaylistItemServicePlayerParameter);
-                            else if (_mainActivity.MusicModelServicePlayerParameter != null)
-                                Seek(iSource, _mainActivity.PlaylistItemServicePlayerParameter);
-                            break;
+                        switch (GetPlayerType())
+                        {
+                            case PLAYER_TYPE_ALBUM_MUSIC:
+                            case PLAYER_TYPE_ALBUM:
 
-                        case PLAYER_TYPE_MUSIC:
-                            Seek(iSource);
-                            break;
-                        default:
-                            Seek(iSource);
-                            break;
-                    }
-                    break;
+                                if (MainActivity.PlaylistItemServicePlayerParameter != null)
+                                    Seek(iSource, MainActivity.PlaylistItemServicePlayerParameter);
+                                break;
+
+                            case PLAYER_TYPE_MUSIC:
+                                Seek(iSource);
+                                break;
+                            default:
+                                Seek(iSource);
+                                break;
+                        }
+                        break;
+                    case ActionNext:
+                        switch (GetPlayerType())
+                        {
+                            case PLAYER_TYPE_ALBUM_MUSIC:
+                            case PLAYER_TYPE_ALBUM:
+
+                                _playlistItem = MainActivity.PlaylistItemServicePlayerParameter;
+                                NextMusicMetaData();
+                                break;
+                        }
+                        break;
+                    case ActionClearSource:
+                        ClearSource();
+                        break;
+                    case ActionHidePlayerControls:
+                        BuildHideNotification(_tuppleAlbum);
+                        break;
+                }
+
+                //Set sticky as we are a long running operation
+                return StartCommandResult.Sticky;
             }
-
-            //Set sticky as we are a long running operation
-            return StartCommandResult.Sticky;
+            catch (Exception ex)
+            {
+                _exceptionThrown = true;
+                _playerException.HandleEvent(this, ex, nameof(PlayerException));
+                return StartCommandResult.RedeliverIntent;
+            }
         }
         public override IBinder OnBind(Intent intent)
         {
@@ -540,43 +713,86 @@ namespace TocaTudo
             _exoPlayer?.Release();
             _exoPlayer = null;
 
+            ClearSource();
             StopSelf();
             return base.OnUnbind(intent);
         }
         public override void OnDestroy()
         {
+            ClearSource();
             StopNotification();
+            StopForeground(StopForegroundFlags.Detach);
+
+            if (_exoPlayer != null)
+            {
+                _exoPlayer.Volume = 0.5f;
+                _exoPlayer.Stop();
+                _exoPlayer.Release();
+                _exoPlayer = null;
+            }
+
+            _broadcastReceiver?.Dispose();
+
             base.OnDestroy();
+        }
+        internal void ClearSource()
+        {
+            if (AlbumMusicModelMode)
+            {
+                _musicModel = null;
+                _albumPlaylist = null;
+                _playlistItem = null;
+                _tuppleAlbum = (null, null, null);
+                _tuppleAlbumDetails = (null, null, 0, null);
+            }
+        }
+        internal void Source(AlbumMusicModelServicePlayer albumMusicModel)
+        {
+            if (albumMusicModel == null || albumMusicModel?.Playlist?.Count() == 0)
+                return;
+
+            MusicModelItemServicePlayer musicModelItem = albumMusicModel.Playlist.FirstOrDefault();
+
+            _tuppleAlbum = (albumMusicModel.AlbumName, musicModelItem.Music, musicModelItem.Image);
+            _tuppleAlbumDetails = (albumMusicModel.AlbumName, musicModelItem?.Music, musicModelItem.TotalMilliseconds, musicModelItem.Image);
+            _albumPlaylist = albumMusicModel.Playlist;
+            _playlistItem = albumMusicModel.Playlist?.FirstOrDefault();
         }
         internal void Source(string url, AlbumModelServicePlayer albumModel)
         {
-            if (albumModel == null)
+            if (string.IsNullOrWhiteSpace(url) || albumModel == null || albumModel.Playlist?.Count() == 0)
                 return;
 
             MusicSource(url);
 
-            _albumModel = albumModel;
-            _playlistItem = _albumModel.Playlist.FirstOrDefault();
+            PlaylistItemServicePlayer playlistItem = albumModel.Playlist.FirstOrDefault();
 
-            UpdateMetaData(_albumModel);
-            BuildNotification(false, 0, _albumModel, _playlistItem);
+            _tuppleAlbum = (albumModel.AlbumName, playlistItem?.Music, albumModel.Image);
+            _tuppleAlbumDetails = (albumModel.AlbumName, playlistItem?.Music, playlistItem.TotalMilliseconds, albumModel.Image);
+            _albumPlaylist = albumModel.Playlist;
+            _playlistItem = albumModel.Playlist?.FirstOrDefault();
+
+            BuildNotification(false, 0, _tuppleAlbum, albumModel.Playlist);
         }
         internal void Source(byte[] music, AlbumModelServicePlayer albumModel)
         {
-            if (albumModel == null)
+            if (music == null || albumModel == null || albumModel.Playlist == null)
                 return;
 
             MusicSource(music);
 
-            _albumModel = albumModel;
-            _playlistItem = _albumModel.Playlist.FirstOrDefault();
+            PlaylistItemServicePlayer playlistItem = albumModel.Playlist.FirstOrDefault();
 
-            UpdateMetaData(_albumModel);
-            BuildNotification(false, 0, _albumModel, _playlistItem);
+            _tuppleAlbum = (albumModel.AlbumName, albumModel.Playlist?.FirstOrDefault()?.Music, albumModel.Image);
+            _tuppleAlbumDetails = (albumModel.AlbumName, playlistItem?.Music, playlistItem.TotalMilliseconds, albumModel.Image);
+            _albumPlaylist = albumModel.Playlist;
+            _playlistItem = albumModel.Playlist?.FirstOrDefault();
+
+            BuildNotification(false, 0, _tuppleAlbum, albumModel.Playlist);
         }
         internal void Source(string url, MusicModelServicePlayer musicModel)
         {
-            if (musicModel == null)
+            if (string.IsNullOrWhiteSpace(url) || musicModel == null)
                 return;
 
             MusicSource(url);
@@ -584,12 +800,31 @@ namespace TocaTudo
             _musicModel = musicModel;
             _rebuildTimerPlayer = true;
 
-            UpdateMetaData(_musicModel);
-            BuildNotification(false, musicModel);
+            if (AlbumMusicModelMode)
+            {
+                _playlistMusicActiveIndex = _albumPlaylist.ToList()
+                                                          .FindIndex(item => string.Equals(item.VideoId, musicModel.MusicModel.VideoId));
+                _playlistItem = _albumPlaylist.Where(item => string.Equals(item.VideoId, musicModel.MusicModel.VideoId))
+                                              .FirstOrDefault();
+
+                _lastPlaylistMusicActivedIndex = _playlistMusicActiveIndex;
+
+                _tuppleAlbum.MusicName = musicModel.Music;
+                _tuppleAlbum.Image = musicModel.Image;
+                _tuppleAlbumDetails.MusicName = musicModel.Music;
+                _tuppleAlbumDetails.TotalMilliseconds = musicModel.MusicModel.MusicTimeTotalSeconds;
+                _tuppleAlbumDetails.Image = musicModel.Image;
+
+                BuildNotification(false, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+            }
+            else
+            {
+                BuildNotification(false, musicModel);
+            }
         }
         internal void Source(byte[] music, MusicModelServicePlayer musicModel)
         {
-            if (musicModel == null)
+            if (music == null || musicModel == null)
                 return;
 
             MusicSource(music);
@@ -597,26 +832,72 @@ namespace TocaTudo
             _musicModel = musicModel;
             _rebuildTimerPlayer = true;
 
-            UpdateMetaData(_musicModel);
-            BuildNotification(false, musicModel);
+            if (AlbumMusicModelMode)
+            {
+                _playlistMusicActiveIndex = _albumPlaylist.ToList()
+                                                          .FindIndex(item => string.Equals(item.VideoId, musicModel.MusicModel.VideoId));
+                _playlistItem = _albumPlaylist.Where(item => string.Equals(item.VideoId, musicModel.MusicModel.VideoId))
+                                              .FirstOrDefault();
+
+                _lastPlaylistMusicActivedIndex = _playlistMusicActiveIndex;
+
+                _tuppleAlbum.MusicName = musicModel.Music;
+                _tuppleAlbum.Image = musicModel.Image;
+                _tuppleAlbumDetails.MusicName = musicModel.Music;
+                _tuppleAlbumDetails.TotalMilliseconds = musicModel.MusicModel.MusicTimeTotalSeconds;
+                _tuppleAlbumDetails.Image = musicModel.Image;
+
+                BuildNotification(false, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+            }
+            else
+            {
+                BuildNotification(false, musicModel);
+            }
         }
         public bool Play()
         {
-            if (_exoPlayer != null)
+            try
             {
-                _exoPlayer.PlayWhenReady = true;
-            }
+                if (_exoPlayer != null)
+                {
+                    RequestAudioFocus();
 
-            return true;
+                    _exoPlayer.PlayWhenReady = true;
+                    IsPlaying = _exoPlayer.IsPlaying;
+
+                    SetPlayerAlbumPlaybackState(true);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _playerException.HandleEvent(this, ex, nameof(PlayerException));
+                return false;
+            }
         }
         public void Pause()
         {
             if (_exoPlayer != null)
             {
                 _exoPlayer.PlayWhenReady = false;
+                IsPlaying = _exoPlayer.IsPlaying;
+
+                SetPlayerAlbumPlaybackState(false);
+                SetPlayerPlaybackState();
             }
         }
-        public void Seek(int milliseconds)
+        public void PlayPause()
+        {
+            if (_exoPlayer != null)
+            {
+                if (IsPlaying)
+                    Pause();
+                else
+                    Play();
+            }
+        }
+        public void Seek(long milliseconds)
         {
             if (_exoPlayer != null)
             {
@@ -624,33 +905,39 @@ namespace TocaTudo
                 _exoPlayer.SeekTo(milliseconds);
             }
         }
-        public void Seek(int milliseconds, PlaylistItemServicePlayer playlistItem)
+        public void Seek(long milliseconds, ItemServicePlayer playlistItem)
         {
             if (_exoPlayer != null)
             {
                 IsPlaying = false;
-
-                if (!string.Equals(playlistItem.AlbumId, _albumModel.AlbumId))
-                    throw new InvalidOperationException("Id de álbum inválido");
-
-                _exoPlayer.SeekTo(milliseconds);
 
                 _playlistItem = playlistItem;
-                _playlistMusicActiveIndex = _albumModel.Playlist.Select((Item, Index) => (Item, Index))
-                                                                .Where(item => item.Item.Number == _playlistItem.Number)
-                                                                .FirstOrDefault()
-                                                                .Index;
+                _tuppleAlbum.MusicName = playlistItem.Music;
+                _tuppleAlbumDetails.MusicName = playlistItem.Music;
+                _tuppleAlbumDetails.TotalMilliseconds = playlistItem.TotalMilliseconds;
 
-                //StartMediaPlaybackState(IsPlaying);
+                _exoPlayer.SeekTo(milliseconds);
+            }
+        }
+        public void Next(ItemServicePlayer playlistItem)
+        {
+            if (_exoPlayer != null)
+            {
+                IsPlaying = false;
+
+                _playlistItem = playlistItem;
+                _tuppleAlbum.MusicName = playlistItem.Music;
+                _tuppleAlbumDetails.MusicName = playlistItem.Music;
+                _tuppleAlbumDetails.TotalMilliseconds = playlistItem.TotalMilliseconds;
             }
         }
         public long Max()
         {
-            return _exoPlayer.Duration;
+            return _exoPlayer?.Duration ?? 0;
         }
         public long CurrentPosition()
         {
-            return _exoPlayer.CurrentPosition;
+            return _exoPlayer?.CurrentPosition ?? 0;
         }
         public bool Stop()
         {
@@ -661,11 +948,32 @@ namespace TocaTudo
             {
                 _exoPlayer.Volume = 0.5f;
                 _exoPlayer.Stop();
+
+                SetPlayerPlaybackState();
             }
 
             return true;
         }
+        public void OnMediaItemTransition(MediaItem mediaItem, int reason)
+        {
+
+        }
+        public void OnVolumeChanged(float volume)
+        {
+
+        }
         public void OnLoadingChanged(bool p0)
+        {
+
+        }
+        public void OnIsLoadingChanged(bool isLoading)
+        {
+
+        }
+        public void OnPositionDiscontinuity(PositionInfo oldPosition, PositionInfo newPosition, int reason)
+        {
+        }
+        public void OnAvailableCommandsChanged(Commands availableCommands)
         {
 
         }
@@ -674,64 +982,50 @@ namespace TocaTudo
             switch (error.Type)
             {
                 case ExoPlaybackException.TypeSource:
-                    _playerInvalidUri();
+                    _playerInvalidUri.HandleEvent(this, null, nameof(PlayerInvalidUri));
                     break;
             }
         }
-        public void OnPlayerStateChanged(bool playWhenReady, int playbackState)
+        public void OnPlayerErrorChanged(ExoPlaybackException error)
         {
-            if (playbackState == 1)//Player.StateIdle
+            switch (error.Type)
+            {
+                case ExoPlaybackException.TypeSource:
+                    _playerInvalidUri.HandleEvent(this, null, nameof(PlayerInvalidUri));
+                    break;
+            }
+        }
+        public void OnPlayWhenReadyChanged(bool playWhenReady, int playbackState)
+        {
+            if (_exceptionThrown)
+                return;
+
+            if (playbackState == StateIdle)
             {
                 IsPlaying = _exoPlayer.IsPlaying;
             }
-            else if (playbackState == 2)//Player.StateBuffering
+            else if (playbackState == StateBuffering)
             {
                 if (_playerReadyBuffering != null)
                 {
                     IsPlaying = _exoPlayer.IsPlaying;
 
-                    if (_exoPlayer.BufferedPercentage > 0)
-                        _playerReadyBuffering();
-                }
-            }
-            else if (playbackState == 3)//Player.StateReady
-            {
-                if (_playerReady != null)
-                {
-                    IsPlaying = _exoPlayer.IsPlaying;
-
-                    switch (GetPlayerType())
+                    if (_playerReady != null && _callPlayerActiveEvent)
                     {
-                        case PLAYER_TYPE_ALBUM:
-
-                            if (IsPlaying)
-                            {
-                                _playlistMusicActiveIndex = _albumModel.Playlist.Select((Item, Index) => (Item, Index))
-                                                                                .Where(item => item.Item.Number == _playlistItem.Number)
-                                                                                .FirstOrDefault()
-                                                                                .Index;
-
-                                UpdateMetaData(_albumModel, _playlistItem);
-                                BuildNotification(true, _playlistMusicActiveIndex, _albumModel, _playlistItem);
-                            }
-
-                            SetMediaPlaybackState(IsPlaying, _rebuildTimerPlayer, _playlistMusicActiveIndex, _albumModel);
-
-                            break;
-                        case PLAYER_TYPE_MUSIC:
-
-                            if (IsPlaying)
-                            {
-                                UpdateMetaData(_musicModel);
-                                BuildNotification(IsPlaying, _musicModel);
-                            }
-
-                            SetMediaPlaybackState(IsPlaying, _rebuildTimerPlayer);
-
-                            break;
+                        _callPlayerActiveEvent = false;
+                        _playerReady.RaiseEvent(this, null, nameof(PlayerReady));
                     }
 
-                    _playerReady();
+                    if (_exoPlayer.BufferedPercentage > 0)
+                        _playerReadyBuffering.HandleEvent(this, null, nameof(PlayerReadyBuffering));
+                }
+            }
+            else if (playbackState == StateReady)
+            {
+                if (_playerReady != null && _callPlayerActiveEvent)
+                {
+                    _callPlayerActiveEvent = false;
+                    _playerReady.RaiseEvent(this, null, nameof(PlayerReady));
                 }
             }
             else if (playbackState == 4)//Player.StateEnded
@@ -739,37 +1033,46 @@ namespace TocaTudo
                 IsPlaying = _exoPlayer.IsPlaying;
             }
         }
+        public void OnPlayerStateChanged(bool playWhenReady, int playbackState)
+        {
+            if (_exceptionThrown)
+                return;
+
+            if (playbackState == StateReady && !AppHelper.HasMusicTotalTime)
+            {
+                if (_playerReady != null && _callPlayerActiveEvent)
+                {
+                    _callPlayerActiveEvent = false;
+
+                    switch (GetPlayerType())
+                    {
+                        case PLAYER_TYPE_MUSIC:
+                            if (AlbumMusicModelMode)
+                            {
+                                UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, _playlistMusicActiveIndex);
+                                SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+                            }
+                            else
+                            {
+                                UpdateMetaData(_musicModel);
+                                SetMediaPlaybackState(_rebuildTimerPlayer);
+                            }
+                            break;
+                    }
+
+                    _playerReady.RaiseEvent(this, null, nameof(PlayerReady));
+                }
+            }
+        }
         public void OnSeekProcessed()
         {
+            if (_exceptionThrown)
+                return;
+
             if (_playerSeekComplete != null)
             {
-                IsPlaying = _exoPlayer.IsPlaying;
-
-                switch (GetPlayerType())
-                {
-                    case PLAYER_TYPE_ALBUM:
-
-                        _playlistMusicActiveIndex = _albumModel.Playlist.Select((Item, Index) => (Item, Index))
-                                                                        .Where(item => item.Item.Number == _playlistItem.Number)
-                                                                        .FirstOrDefault()
-                                                                        .Index;
-                        _rebuildTimerPlayer = true;
-
-                        UpdateMetaData(_albumModel, _playlistItem);
-                        BuildNotification(IsPlaying, _playlistMusicActiveIndex, _albumModel, _playlistItem);
-                        SetMediaPlaybackState(IsPlaying, _rebuildTimerPlayer, _playlistMusicActiveIndex, _albumModel);
-
-                        break;
-                    case PLAYER_TYPE_MUSIC:
-
-                        UpdateMetaData(_musicModel);
-                        BuildNotification(IsPlaying, _musicModel);
-                        SetMediaPlaybackState(IsPlaying, _rebuildTimerPlayer);
-
-                        break;
-                }
-
-                _playerSeekComplete();
+                NextMusicMetaData();
+                _playerSeekComplete.HandleEvent(this, null, nameof(PlayerSeekComplete));
             }
         }
         public void OnPositionDiscontinuity(int p1)
@@ -784,26 +1087,93 @@ namespace TocaTudo
         {
 
         }
-        public void OnIsPlayingChanged(bool p)
+        public void OnPlaybackStateChanged(int param)
         {
 
         }
+        public void OnEvents(IPlayer player, Events events)
+        {
+            try
+            {
+                if (_exceptionThrown)
+                    return;
+
+                if ((events.Contains(EventPlaybackStateChanged) || events.Contains(EventPlayWhenReadyChanged)) && AppHelper.HasMusicTotalTime)
+                {
+                    if (_playerReadyBuffering != null)
+                    {
+                        IsPlaying = _exoPlayer.IsPlaying;
+
+                        if (_playerReady != null && _callPlayerActiveEvent)
+                        {
+                            _callPlayerActiveEvent = false;
+
+                            switch (GetPlayerType())
+                            {
+                                case PLAYER_TYPE_MUSIC:
+                                    if (AlbumMusicModelMode)
+                                    {
+                                        UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, _playlistMusicActiveIndex);
+                                        SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+                                    }
+                                    else
+                                    {
+                                        UpdateMetaData(_musicModel);
+                                        SetMediaPlaybackState(_rebuildTimerPlayer);
+                                    }
+                                    break;
+                            }
+
+                            _playerReady.RaiseEvent(this, null, nameof(PlayerReady));
+                        }
+
+                        if (_exoPlayer.BufferedPercentage > 0)
+                            _playerReadyBuffering.HandleEvent(this, null, nameof(PlayerReadyBuffering));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _playerException.HandleEvent(this, ex, nameof(PlayerException));
+            }
+        }
+        public void OnIsPlayingChanged(bool playing)
+        {
+            _playingChanged.RaiseEvent(this, playing, nameof(PlayingChanged));
+
+            if (playing)
+            {
+                switch (GetPlayerType())
+                {
+                    case PLAYER_TYPE_MUSIC:
+                        SetPlayerPlaybackState();
+                        break;
+                    case PLAYER_TYPE_ALBUM_MUSIC:
+                    case PLAYER_TYPE_ALBUM:
+                        SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+                        break;
+                }
+            }
+        }
         private void SetMusicSource(Intent intent)
         {
+            if (intent == null)
+                return;
+
             if (intent.HasExtra("source-url"))
             {
                 string source = intent.GetStringExtra("source-url");
                 switch (GetPlayerType())
                 {
                     case PLAYER_TYPE_ALBUM:
-                        Source(source, _mainActivity.AlbumModelServicePlayerParameter);
+                        Source(source, MainActivity.AlbumModelServicePlayerParameter);
                         break;
                     case PLAYER_TYPE_MUSIC:
-                        Source(source, _mainActivity.MusicModelServicePlayerParameter);
+                        Source(source, MainActivity.MusicModelServicePlayerParameter);
                         break;
                 }
             }
-            if (intent.HasExtra("source-byte"))
+            else if (intent.HasExtra("source-byte"))
             {
                 bool source = intent.GetBooleanExtra("source-byte", false);
                 if (source)
@@ -811,95 +1181,181 @@ namespace TocaTudo
                     switch (GetPlayerType())
                     {
                         case PLAYER_TYPE_ALBUM:
-                            Source(_mainActivity.AudioServiceMusicParameter, _mainActivity.AlbumModelServicePlayerParameter);
+                            Source(_mainActivity.AudioServiceMusicParameter, MainActivity.AlbumModelServicePlayerParameter);
                             break;
                         case PLAYER_TYPE_MUSIC:
-                            Source(_mainActivity.AudioServiceMusicParameter, _mainActivity.MusicModelServicePlayerParameter);
+                            Source(_mainActivity.AudioServiceMusicParameter, MainActivity.MusicModelServicePlayerParameter);
                             break;
                     }
+                }
+            }
+            else
+            {
+                switch (GetPlayerType())
+                {
+                    case PLAYER_TYPE_ALBUM_MUSIC:
+                        Source(MainActivity.AlbumMusicModelServicePlayerParameter);
+                        break;
                 }
             }
         }
         private void MusicSource(string url)
         {
-            if (_exoPlayer != null)
+            try
             {
-                _exoPlayer.Release();
-                _exoPlayer.Dispose();
+                if (_exoPlayer != null)
+                {
+                    _exoPlayer.Release();
+                    _exoPlayer.Dispose();
+                }
+
+                if (_playerInitializing != null)
+                    _playerInitializing.RaiseEvent(this, null, nameof(PlayerInitializing));
+
+                _exoPlayer = new SimpleExoPlayer.Builder(this).Build();
+                _exoPlayer.AddListener(this);
+
+                _extractorMediaSource = new ProgressiveMediaSource.Factory(new DefaultHttpDataSource.Factory()).CreateMediaSource(MediaItem.FromUri(Android.Net.Uri.Parse(url)));
+                _exoPlayer.SetMediaSource(_extractorMediaSource);
+                _exoPlayer.Prepare();
+
+                _callPlayerActiveEvent = true;
             }
-
-            if (_playerInitializing != null)
-                _playerInitializing();
-
-            _url = url;
-
-            _exoPlayer = new SimpleExoPlayer.Builder(this).Build();
-            _exoPlayer.AddListener(this);
-
-            Android.Net.Uri sourceUri = Android.Net.Uri.Parse(url);
-
-            var userAgent = Util.GetUserAgent(_context, "TocaTudo");
-            var defaultHttpDataSourceFactory = new DefaultHttpDataSourceFactory(userAgent);
-            var defaultDataSourceFactory = new DefaultDataSourceFactory(_context, null, defaultHttpDataSourceFactory);
-
-            _extractorMediaSource = new ProgressiveMediaSource.Factory(defaultDataSourceFactory).CreateMediaSource(sourceUri);
-            _exoPlayer.Prepare(_extractorMediaSource);
-
-            _exoPlayer.VolumeChanged += (sender, e) =>
+            catch (Exception ex)
             {
-                if (IsPlaying)
-                    Pause();
-                else
-                    Play();
-            };
+                _playerException.HandleEvent(this, ex, nameof(PlayerException));
+            }
         }
         private void MusicSource(byte[] music)
         {
-            if (_exoPlayer != null)
+            try
             {
-                _exoPlayer.Volume = 0.5f;
-                _exoPlayer.Stop();
-                _exoPlayer.Release();
-                _exoPlayer = null;
+                if (_exoPlayer != null)
+                {
+                    _exoPlayer.Volume = 0.5f;
+                    _exoPlayer.Stop();
+                    _exoPlayer.Release();
+                    _exoPlayer = null;
+                }
+                if (_dataSource != null)
+                {
+                    _dataSource.Close();
+                    _dataSource.Dispose();
+                    _dataSource = null;
+                }
+                if (_extractorMediaSource != null)
+                {
+                    _extractorMediaSource.UnregisterFromRuntime();
+                    _extractorMediaSource.Dispose();
+                    _extractorMediaSource = null;
+                }
+
+                if (_playerInitializing != null)
+                    _playerInitializing.HandleEvent(this, null, nameof(PlayerInitializing));
+
+
+                _exoPlayer = new SimpleExoPlayer.Builder(this).Build();
+                _exoPlayer.AddListener(this);
+
+                _dataSource = new ByteArrayDataSource(music);
+                Android.Net.Uri audioByteUri = new UriByteDataHelper().GetUri(music);
+
+                DataSpec dataSpec = new DataSpec(audioByteUri);
+                _dataSource.Open(dataSpec);
+
+                IDataSource.IFactory dataSourceFactory = new DefaultDataSourceFactory(_context, this);
+
+                _extractorMediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).CreateMediaSource(audioByteUri);
+                _exoPlayer.Prepare(_extractorMediaSource);
+
+                _callPlayerActiveEvent = true;
             }
-            if (_dataSource != null)
+            catch (Exception ex)
             {
-                _dataSource.Close();
-                _dataSource.Dispose();
-                _dataSource = null;
+                _playerException.HandleEvent(this, ex, nameof(PlayerException));
             }
-            if (_extractorMediaSource != null)
+        }
+        private void SetPlayerPlaybackState()
+        {
+            switch (GetPlayerType())
             {
-                _extractorMediaSource.UnregisterFromRuntime();
-                _extractorMediaSource.Dispose();
-                _extractorMediaSource = null;
+                case PLAYER_TYPE_ALBUM_MUSIC:
+                case PLAYER_TYPE_ALBUM:
+
+                    if (_stopMediaCompatPlayerNavigation || _albumPlaylist == null)
+                        return;
+
+                    _playlistMusicActiveIndex = _albumPlaylist.ToList()
+                                                              .FindIndex(item => (_playlistItem.Number > -1 && item.Number == _playlistItem.Number) || (string.Equals(item.VideoId, _playlistItem.VideoId) && _playlistItem.Number < 0));
+
+                    BuildNotification(IsPlaying, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+                    SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+
+                    _lastPlaylistMusicActivedIndex = _playlistMusicActiveIndex;
+
+                    break;
+                case PLAYER_TYPE_MUSIC:
+
+                    if (_albumPlaylist?.Count() > 0)
+                    {
+                        BuildNotification(IsPlaying, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+                        SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+                    }
+                    else
+                    {
+                        BuildNotification(IsPlaying, _musicModel);
+                        SetMediaPlaybackState(false);
+                    }
+
+                    break;
             }
+        }
+        private void NextMusicMetaData()
+        {
+            if (_albumPlaylist == null || _albumPlaylist?.Count() == 0)
+                return;
 
-            if (_playerInitializing != null)
-                _playerInitializing();
-
-            _exoPlayer = new SimpleExoPlayer.Builder(this).Build();
-            _exoPlayer.AddListener(this);
-
-            _dataSource = new ByteArrayDataSource(music);
-            Android.Net.Uri audioByteUri = new UriByteDataHelper().GetUri(music);
-
-            DataSpec dataSpec = new DataSpec(audioByteUri);
-
-            _dataSource.Open(dataSpec);
-
-            IDataSourceFactory dataSourceFactory = new DefaultDataSourceFactory(_context, this);
-
-            _extractorMediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).CreateMediaSource(audioByteUri);
-            _exoPlayer.Prepare(_extractorMediaSource);
-
-            _exoPlayer.VolumeChanged += (sender, e) =>
+            switch (GetPlayerType())
             {
-                if (IsPlaying)
-                    Pause();
-                else
-                    Play();
-            };
+                case PLAYER_TYPE_ALBUM_MUSIC:
+                case PLAYER_TYPE_ALBUM:
+
+                    if (_stopMediaCompatPlayerNavigation)
+                        return;
+
+                    _playlistMusicActiveIndex = _albumPlaylist.ToList()
+                                                              .FindIndex(item => (_playlistItem.Number > -1 && item.Number == _playlistItem.Number) || (string.Equals(item.VideoId, _playlistItem.VideoId) && _playlistItem.Number < 0));
+                    _lastPlaylistMusicActivedIndex = _playlistMusicActiveIndex;
+
+                    _tuppleAlbum.MusicName = _playlistItem.Music;
+                    _tuppleAlbumDetails.MusicName = _playlistItem.Music;
+                    _tuppleAlbumDetails.TotalMilliseconds = _playlistItem.TotalMilliseconds;
+
+                    _rebuildTimerPlayer = true;
+
+                    UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, _playlistMusicActiveIndex);
+                    BuildNotification(IsPlaying, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+                    SetMediaPlaybackState(IsPlaying, _playlistMusicActiveIndex, _albumPlaylist);
+
+                    _lastPlaylistMusicActivedIndex = _playlistMusicActiveIndex;
+
+                    break;
+            }
+        }
+        private void SetPlayerAlbumPlaybackState(bool isPlaying)
+        {
+            switch (GetPlayerType())
+            {
+                case PLAYER_TYPE_ALBUM_MUSIC:
+                case PLAYER_TYPE_ALBUM:
+
+                    if (_stopMediaCompatPlayerNavigation)
+                        return;
+
+                    BuildNotification(isPlaying: true, _playlistMusicActiveIndex, _tuppleAlbum, _albumPlaylist);
+
+                    break;
+            }
         }
         internal bool RequestAudioFocus()
         {
@@ -907,35 +1363,16 @@ namespace TocaTudo
 
             if (Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.O)
             {
-                _audioManager = (AudioManager)GetSystemService(Context.AudioService);
-                audioFocus = _audioManager.RequestAudioFocus(new AudioFocusRequestClass.Builder(AudioFocus.Gain).SetOnAudioFocusChangeListener(this).SetAcceptsDelayedFocusGain(true).Build());
+                _audioManager = (AudioManager)GetSystemService(AudioService);
+                audioFocus = _audioManager?.RequestAudioFocus(new AudioFocusRequestClass.Builder(AudioFocus.Gain).SetOnAudioFocusChangeListener(this).SetAcceptsDelayedFocusGain(true).Build());
             }
             else
             {
-                _audioManager = (AudioManager)GetSystemService(Context.AudioService);
-                audioFocus = _audioManager.RequestAudioFocus(this, Stream.Music, AudioFocus.Gain);
+                _audioManager = (AudioManager)GetSystemService(AudioService);
+                audioFocus = _audioManager?.RequestAudioFocus(this, Stream.Music, AudioFocus.Gain);
             }
 
-            if (audioFocus == AudioFocusRequest.Granted)
-            {
-                return true;
-            }
-
-            return false;
-        }
-        private bool RemoveAudioFocus()
-        {
-            return AudioFocusRequest.Granted == _audioManager.AbandonAudioFocus(this);
-        }
-
-        private void Player_Prepared(object sender, EventArgs e)
-        {
-            _playerReady();
-        }
-        private void Player_SeekComplete(object sender, EventArgs e)
-        {
-            IsPlaying = _exoPlayer.IsPlaying;
-            //_playerSeekComplete();
+            return audioFocus == AudioFocusRequest.Granted;
         }
         public IDataSource CreateDataSource()
         {
@@ -946,19 +1383,25 @@ namespace TocaTudo
             if (_exoPlayer == null)
                 return;
 
+            if (AppHelper.MusicPlayerInterstitialIsLoadded)
+            {
+                Pause();
+                return;
+            }
+
             switch (focusChange)
             {
                 case AudioFocus.Gain:
                     _exoPlayer.Volume = 1.0f;
-                    _playerLosedAudioFocus();
+                    _playerLosedAudioFocus.HandleEvent(this, null, nameof(PlayerLosedAudioFocus));
+                    Play();
                     break;
                 case AudioFocus.LossTransient:
-                    _exoPlayer.Volume = 0.0f;
+                    _playerLosedAudioFocus.HandleEvent(this, null, nameof(PlayerLosedAudioFocus));
                     break;
                 case AudioFocus.Loss:
                     Pause();
-                    _exoPlayer.Volume = 1.0f;
-                    _playerLosedAudioFocus();
+                    _playerLosedAudioFocus.HandleEvent(this, null, nameof(PlayerLosedAudioFocus));
                     break;
                 case AudioFocus.LossTransientCanDuck:
                     _exoPlayer.Volume = 0.5f;
@@ -969,103 +1412,108 @@ namespace TocaTudo
         {
             switch (GetPlayerType())
             {
+                case PLAYER_TYPE_ALBUM_MUSIC:
                 case PLAYER_TYPE_ALBUM:
                     HandleIncomingPlayerAlbumActions(action);
                     break;
                 case PLAYER_TYPE_MUSIC:
-                    HandleIncomingPlayerMusicActions(action);
+                    if (_albumPlaylist?.Count() > 0)
+                        HandleIncomingPlayerAlbumActions(action);
+                    else
+                        HandleIncomingPlayerMusicActions(action);
                     break;
             }
         }
         internal void HandleIncomingPlayerAlbumActions(string action)
         {
-            if (string.IsNullOrWhiteSpace(action))
+            if (string.IsNullOrWhiteSpace(action) || AppHelper.HasInterstitialToShow || AppHelper.MusicPlayerInterstitialIsLoadded)
                 return;
 
-            int musicPlayingIndex = _albumModel.Playlist.Select((Item, Index) => (Item, Index))
-                                                        .Where(item => item.Item.Number == _playlistItem.Number)
-                                                        .FirstOrDefault()
-                                                        .Index;
+            _stopMediaCompatPlayerNavigation = false;
+
+            int musicPlayingIndex = _albumPlaylist.ToList()
+                                                  .FindIndex(item => (_playlistItem.Number > -1 && item.Number == _playlistItem.Number) || (string.Equals(item.VideoId, _playlistItem.VideoId) && _playlistItem.Number < 0));
 
             switch (action)
             {
                 case ActionPlay:
 
                     _playlistMusicActiveIndex = musicPlayingIndex;
-                    _playerPlaylistChanged(_playlistItem);
-
-                    UpdateMetaData(_albumModel, _playlistItem);
-                    BuildNotification(true, musicPlayingIndex, _albumModel, _playlistItem);
-
-                    _rebuildTimerPlayer = false;
+                    BuildNotification(true, musicPlayingIndex, _tuppleAlbum, _albumPlaylist);
 
                     break;
                 case ActionStop:
 
-                    _playerPlaylistChanged(_playlistItem);
+                    _playerPlaylistChanged.RaiseEvent(this, _playlistItem, nameof(PlayerPlaylistChanged));
 
-                    UpdateMetaData(_albumModel, _playlistItem);
-                    BuildNotification(false, musicPlayingIndex, _albumModel, _playlistItem);
+                    UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, musicPlayingIndex);
+                    BuildNotification(false, musicPlayingIndex, _tuppleAlbum, _albumPlaylist);
 
                     _rebuildTimerPlayer = true;
 
                     break;
                 case ActionPause:
-
-                    _playerPlaylistChanged(_playlistItem);
-
-                    UpdateMetaData(_albumModel, _playlistItem);
-                    BuildNotification(false, musicPlayingIndex, _albumModel, _playlistItem);
+                    UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, musicPlayingIndex);
+                    BuildNotification(false, musicPlayingIndex, _tuppleAlbum, _albumPlaylist);
 
                     _rebuildTimerPlayer = false;
 
                     break;
                 case ActionPrevious:
 
+                    if (IsFirstMusicPreviousSelected())
+                    {
+                        _stopMediaCompatPlayerNavigation = true;
+                        return;
+                    }
+
                     if (musicPlayingIndex == 0)
-                        _playlistItem = _albumModel.Playlist[musicPlayingIndex];
+                        _playlistItem = _albumPlaylist[musicPlayingIndex];
                     else
                     {
                         musicPlayingIndex -= 1;
-                        _playlistItem = _albumModel.Playlist[musicPlayingIndex];
+                        _playlistItem = _albumPlaylist[musicPlayingIndex];
                     }
 
-                    UpdateMetaData(_albumModel, _playlistItem);
-                    BuildNotification(false, musicPlayingIndex, _albumModel, _playlistItem);
+                    UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, musicPlayingIndex);
+                    BuildNotification(false, musicPlayingIndex, _tuppleAlbum, _albumPlaylist);
 
                     _playlistMusicActiveIndex = musicPlayingIndex;
-                    _playerPlaylistChanged(_playlistItem);
+                    _playerPlaylistChanged.RaiseEvent(this, _playlistItem, nameof(PlayerPlaylistChanged));
 
                     _rebuildTimerPlayer = true;
 
                     break;
                 case ActionNext:
 
-                    if (musicPlayingIndex == _albumModel.Playlist.Count() - 1)
-                        _playlistItem = _albumModel.Playlist[musicPlayingIndex];
+                    if (IsLastMusicPreviousSelected())
+                    {
+                        _stopMediaCompatPlayerNavigation = true;
+                        return;
+                    }
+
+                    if (musicPlayingIndex == _albumPlaylist.Count() - 1)
+                        _playlistItem = _albumPlaylist[musicPlayingIndex];
                     else
                     {
                         musicPlayingIndex += 1;
-                        _playlistItem = _albumModel.Playlist[musicPlayingIndex];
+                        _playlistItem = _albumPlaylist[musicPlayingIndex];
                     }
 
-                    UpdateMetaData(_albumModel, _playlistItem);
-                    BuildNotification(false, musicPlayingIndex, _albumModel, _playlistItem);
+                    UpdateMetaData(_tuppleAlbumDetails, _albumPlaylist, musicPlayingIndex);
+                    BuildNotification(false, musicPlayingIndex, _tuppleAlbum, _albumPlaylist);
 
                     _playlistMusicActiveIndex = musicPlayingIndex;
-                    _playerPlaylistChanged(_playlistItem);
+                    _playerPlaylistChanged.RaiseEvent(this, _playlistItem, nameof(PlayerPlaylistChanged));
 
                     _rebuildTimerPlayer = true;
 
                     break;
                 case ActionTogglePlayback:
-                    //if (_exoPlayer == null)
-                    //    return StartCommandResult.Sticky;
-                    //
-                    //if (_exoPlayer.IsPlaying)
-                    //    Pause();
-                    //else
-                    //    Play();
+                    if (_exoPlayer.IsPlaying)
+                        Pause();
+                    else
+                        Play();
 
                     break;
                 case ActionSeek:
@@ -1076,55 +1524,37 @@ namespace TocaTudo
         }
         internal void HandleIncomingPlayerMusicActions(string action)
         {
-            if (string.IsNullOrWhiteSpace(action))
+            if (string.IsNullOrWhiteSpace(action) || AppHelper.HasInterstitialToShow)
                 return;
 
             switch (action)
             {
                 case ActionPlay:
 
-                    UpdateMetaData(_musicModel);
                     BuildNotification(true, _musicModel);
-
-                    _rebuildTimerPlayer = false;
 
                     break;
                 case ActionStop:
 
-                    //_playerPlaylistChanged(_playlistItem);
-
-                    UpdateMetaData(_musicModel);
-                    BuildNotification(true, _musicModel);
-
-                    _rebuildTimerPlayer = true;
+                    BuildNotification(false, _musicModel);
+                    SetMediaPlaybackState(true);
 
                     break;
                 case ActionPause:
 
-                    //_playerPlaylistChanged(_playlistItem);
-
-                    UpdateMetaData(_musicModel);
                     BuildNotification(false, _musicModel);
-
-                    _rebuildTimerPlayer = false;
 
                     break;
                 case ActionTogglePlayback:
-                    //if (_exoPlayer == null)
-                    //    return StartCommandResult.Sticky;
-                    //
-                    //if (_exoPlayer.IsPlaying)
-                    //    Pause();
-                    //else
-                    //    Play();
 
                     break;
                 case ActionSeek:
-                    //int iSource = intent.GetIntExtra("seek", 0);
-                    //Seek(iSource);
+
                     break;
             }
         }
+        private bool IsFirstMusicPreviousSelected() => _lastPlaylistMusicActivedIndex == 0;
+        private bool IsLastMusicPreviousSelected() => _lastPlaylistMusicActivedIndex == _albumPlaylist.Count() - 1;
     }
     public class MusicBroadcast : BroadcastReceiver
     {
@@ -1135,6 +1565,9 @@ namespace TocaTudo
         }
         public override void OnReceive(Context context, Intent intent)
         {
+            if (intent == null || context == null)
+                return;
+
             switch (intent.Action)
             {
                 case AudioService.ActionPlay:
@@ -1169,35 +1602,43 @@ namespace TocaTudo
         }
         public override void OnPlay()
         {
-            if (!_audioService.RequestAudioFocus())
+            if (AppHelper.HasInterstitialToShow)
                 return;
 
             _audioService.MediaSessionCompat.Active = true;
             _audioService.Play();
             _audioService.HandleIncomingActions(AudioService.ActionPlay);
-            //_audioService.SetMediaPlaybackState(_audioService.IsPlaying, _audioService.RebuildTimerPlayer, _audioService.PlaylistMusicActiveIndex, _audioService.AlbumModel);
 
             _audioService.RebuildTimerPlayer = false;
+
+            if (_audioService.MusicModelService != null)
+                _audioService.MusicModelService.MusicModel.IsActiveMusic = false;
+            if (_audioService.PlaylistItemService != null)
+                _audioService.PlaylistItemService.PlaylistItem.IsActiveMusic = true;
         }
         public override void OnPause()
         {
+            if (AppHelper.HasInterstitialToShow)
+                return;
+
             _audioService.Pause();
             _audioService.HandleIncomingActions(AudioService.ActionPause);
-            //_audioService.SetMediaPlaybackState(_audioService.IsPlaying, _audioService.RebuildTimerPlayer, _audioService.PlaylistMusicActiveIndex, _audioService.AlbumModel);
 
             _audioService.RebuildTimerPlayer = false;
+
+            if (_audioService.MusicModelService?.MusicModel != null)
+                _audioService.MusicModelService.MusicModel.IsActiveMusic = false;
+            if (_audioService.PlaylistItemService?.PlaylistItem != null)
+                _audioService.PlaylistItemService.PlaylistItem.IsActiveMusic = false;
         }
         public override void OnSkipToNext()
         {
             _audioService.HandleIncomingActions(AudioService.ActionNext);
-
             _audioService.RebuildTimerPlayer = true;
         }
         public override void OnSkipToPrevious()
         {
             _audioService.HandleIncomingActions(AudioService.ActionPrevious);
-            //_audioService.SetMediaPlaybackState(_audioService.IsPlaying, _audioService.RebuildTimerPlayer, _audioService.PlaylistMusicActiveIndex, _audioService.AlbumModel);
-
             _audioService.RebuildTimerPlayer = true;
         }
     }
@@ -1239,34 +1680,32 @@ namespace TocaTudo
         public override void OnSessionDestroyed()
         {
             base.OnSessionDestroyed();
-            //updateSessionToken();
         }
     }
     public class UriByteDataHelper
     {
         public Android.Net.Uri GetUri(byte[] data)
         {
-            URL url = new URL(null, "bytes:///" + "audio", new BytesHandler(data));
+            Java.Net.URL url = new Java.Net.URL(null, "bytes:///" + "audio", new BytesHandler(data));
             return Android.Net.Uri.Parse(url.ToURI().ToString());
         }
-        public class BytesHandler : URLStreamHandler
+        public class BytesHandler : Java.Net.URLStreamHandler
         {
             byte[] mData;
             public BytesHandler(byte[] data)
             {
                 mData = data;
             }
-            protected override URLConnection OpenConnection(URL u)
+            protected override Java.Net.URLConnection OpenConnection(Java.Net.URL u)
             {
                 return new ByteUrlConnection(u, mData);
             }
         }
     }
-
-    public class ByteUrlConnection : URLConnection
+    public class ByteUrlConnection : Java.Net.URLConnection
     {
         private byte[] mData;
-        public ByteUrlConnection(URL url, byte[] data)
+        public ByteUrlConnection(Java.Net.URL url, byte[] data)
          : base(url)
         {
             mData = data;
@@ -1277,35 +1716,6 @@ namespace TocaTudo
         public Java.IO.InputStream GetInputStream()
         {
             return new Java.IO.ByteArrayInputStream(mData);
-        }
-    }
-    public class AudioFocusChangeListener : Java.Lang.Object, IOnAudioFocusChangeListener
-    {
-        public void OnAudioFocusChange([GeneratedEnum] AudioFocus focusChange)
-        {
-            switch (focusChange)
-            {
-                case AudioFocus.Loss:
-                    break;
-                case AudioFocus.LossTransient:
-                    break;
-                case AudioFocus.LossTransientCanDuck:
-                    //if (mMediaPlayer != null)
-                    //{
-                    //mMediaPlayer.setVolume(0.3f, 0.3f);
-                    //}
-                    break;
-                case AudioFocus.Gain:
-                    //if (mMediaPlayer != null)
-                    //{
-                    //    if (!mMediaPlayer.isPlaying())
-                    //    {
-                    //        mMediaPlayer.start();
-                    //    }
-                    //    mMediaPlayer.setVolume(1.0f, 1.0f);
-                    //}
-                    break;
-            }
         }
     }
 }

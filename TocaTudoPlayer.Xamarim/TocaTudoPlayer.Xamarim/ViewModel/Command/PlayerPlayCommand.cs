@@ -3,7 +3,7 @@ using System.Windows.Input;
 
 namespace TocaTudoPlayer.Xamarim.ViewModel
 {
-    public class PlayerPlayCommand : ICommand
+    public class PlayerPlayCommand
     {
         private readonly AlbumPlayerViewModel _vm;
         public event EventHandler CanExecuteChanged;

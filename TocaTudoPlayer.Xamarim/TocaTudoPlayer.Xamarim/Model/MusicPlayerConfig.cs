@@ -3,7 +3,7 @@
     public class MusicPlayerConfig
     {
         public bool PlayFirstMusic { get; set; } = true;
-        public int TotalMusicsWillPlay { get; set; }
+        public int TotalMusicsWillPlayBeforeMerchan { get; set; }
         public int CountMusicsPlayed { get; private set; } = 0;
         public bool CheckIfMusicPlayedCountAchieveTotal(bool autoRebuild = false)
         {
@@ -13,7 +13,7 @@
                 return true;
             }
 
-            if (CountMusicsPlayed < TotalMusicsWillPlay)
+            if (CountMusicsPlayed < TotalMusicsWillPlayBeforeMerchan)
             {
                 AddCountMusicsPlayed();
                 return false;

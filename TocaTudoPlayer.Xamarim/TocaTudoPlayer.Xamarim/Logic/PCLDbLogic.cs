@@ -73,6 +73,11 @@ namespace TocaTudoPlayer.Xamarim.Logic
                 return false;
             }
         }
+        public async Task<bool> FileExists(string file) 
+        {
+            ExistenceCheckResult checkResult = await _folder.CheckExistsAsync(file);
+            return checkResult == ExistenceCheckResult.FileExists;
+        }
         public async Task RemoveFile(string fileName)
         {
             try

@@ -12,19 +12,39 @@ namespace TocaTudoPlayer.Xamarim
     public class AlbumModel : BaseViewModel, IVideoModel
     {
         private ObservableCollection<PlaylistItem> _playlist;
+        private long _musicTimeTotalSeconds;
+        private string _album;
         private ImageSource _imgAlbum;
         public AlbumModel()
         {
             _playlist = new ObservableCollection<PlaylistItem>();
         }
-        public string Album { get; set; }
+        public string Album
+        {
+            get { return _album; }
+            set 
+            { 
+                _album = value;
+                OnPropertyChanged(nameof(Album));
+            }
+        }
         public string VideoId { get; set; }
         public string UAlbumlId { get; set; }
+        public string AlbumTime { get; set; }
+        public long MusicTimeTotalSeconds 
+        { 
+            get { return _musicTimeTotalSeconds; }
+            set { _musicTimeTotalSeconds = value; }
+        }
         public AlbumParseType ParseType { get; set; }
         public ImageSource ImgAlbum 
         {
             get { return _imgAlbum; }
-            set { _imgAlbum = value; }
+            set 
+            { 
+                _imgAlbum = value;
+                OnPropertyChanged(nameof(ImgAlbum));
+            }
         }
         public byte[] ByteImgAlbum { get; set; }       
         public ObservableCollection<PlaylistItem> Playlist
@@ -45,7 +65,7 @@ namespace TocaTudoPlayer.Xamarim
             PermissionStatus statusRead = await Permissions.CheckStatusAsync<Permissions.StorageRead>();
             PermissionStatus statusWrite = await Permissions.CheckStatusAsync<Permissions.StorageWrite>();
 
-            bool hasLocalPermissionToStorage = (statusRead == PermissionStatus.Granted && statusWrite == PermissionStatus.Granted);
+            bool hasLocalPermissionToStorage = statusRead == PermissionStatus.Granted && statusWrite == PermissionStatus.Granted;
 
             if (!hasLocalPermissionToStorage)
                 return string.Empty;
@@ -64,10 +84,10 @@ namespace TocaTudoPlayer.Xamarim
             if (string.IsNullOrEmpty(VideoId))
                 return;
 
-            ByteImgAlbum = await tocaTudoApi.PlayerImageEndpoint(VideoId);
+            ByteImgAlbum = await tocaTudoApi.PlayerImageWidescreenEndpoint(VideoId);            
         }
     }
-    public class PlaylistItem : BaseViewModel
+    public class PlaylistItem : BaseViewModel, ICommonMusicServiceModel
     {
         private string _downloadMusicStatusText;
         private string _imgLogo;
@@ -88,8 +108,8 @@ namespace TocaTudoPlayer.Xamarim
             _downloadMusicStatusText = "iniciar...";
             _imgLogo = Icon.Play;
             _imgStartDownloadIcon = "showDownloadIcon.png";
-            _musicSelectedColorPrimary = Color.FromHex("#F7F9FC");
-            _musicSelectedColorSecondary = Color.FromHex("#F7F9FC");
+            _musicSelectedColorPrimary = Color.FromHex("#d7dff6");
+            _musicSelectedColorSecondary = Color.FromHex("#f5f7fa");
             _musicPlayingFontAttr = FontAttributes.None;
             _textColorMusicPlaying = "#374149";
             _isPlaying = false;
@@ -111,8 +131,8 @@ namespace TocaTudoPlayer.Xamarim
             _downloadMusicStatusText = "iniciar...";
             _imgLogo = Icon.Play;
             _imgStartDownloadIcon = "showDownloadIcon.png";
-            _musicSelectedColorPrimary = Color.FromHex("#F7F9FC");
-            _musicSelectedColorSecondary = Color.FromHex("#F7F9FC");
+            _musicSelectedColorPrimary = Color.FromHex("#d7dff6");
+            _musicSelectedColorSecondary = Color.FromHex("#f5f7fa");
             _musicPlayingFontAttr = FontAttributes.None;
             _textColorMusicPlaying = "#374149";
             _isPlaying = false;
@@ -129,7 +149,7 @@ namespace TocaTudoPlayer.Xamarim
         public int TempoSegundosInicio { get; set; }
         public int TempoSegundosFim { get; set; }
         public string TempoDesc { get; set; }
-        public bool IsPaused { get; set; }
+        public bool IsActiveMusic { get; set; }
         public string DownloadMusicStatusText
         {
             get { return _downloadMusicStatusText; }
@@ -263,8 +283,8 @@ namespace TocaTudoPlayer.Xamarim
             }
             else
             {
-                MusicSelectedColorPrimary = Color.FromHex("#F7F9FC");
-                MusicSelectedColorSecondary = Color.FromHex("#F7F9FC");
+                MusicSelectedColorPrimary = Color.FromHex("#d7dff6");
+                MusicSelectedColorSecondary = Color.FromHex("#f5f7fa");
             }
         }
         private void UpdImgLogo() => ImgLogo = IsPlaying ? Icon.Stop : Icon.Play;

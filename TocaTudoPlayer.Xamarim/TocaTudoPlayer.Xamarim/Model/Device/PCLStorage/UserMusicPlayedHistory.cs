@@ -8,6 +8,7 @@ namespace TocaTudoPlayer.Xamarim
     public class UserMusicPlayedHistory : BaseViewModel
     {
         private byte[] _byteImgMusic;
+        private long _musicTimeTotalSeconds;
         private Color _musicSelectedColorPrimary;
         private Color _musicSelectedColorSecondary;
         private Color _musicTextColor;
@@ -22,6 +23,15 @@ namespace TocaTudoPlayer.Xamarim
         }
         public string VideoId { get; set; }
         public string MusicName { get; set; }
+        public string MusicTime { get; set; }
+        public long MusicTimeTotalSeconds
+        {
+            get { return _musicTimeTotalSeconds; }
+            set
+            {
+                _musicTimeTotalSeconds = value;
+            }
+        }
         public bool IsSavedOnLocalDb { get; set; }
 
         [JsonIgnore]

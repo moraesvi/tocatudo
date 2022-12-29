@@ -8,6 +8,7 @@ namespace TocaTudoPlayer.Xamarim
         ValueTask<T> GetJson<T>(string fileName);
         Task SaveFile(string fileName, string fileContent);
         Task<bool> SaveFile<T>(string fileName, T obj);
+        Task<bool> FileExists(string file);
         Task RemoveFile(string fileName);
     }
 }

@@ -1,5 +1,5 @@
-﻿using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Cosmos.Linq;
+﻿//using Microsoft.Azure.Cosmos;
+//using Microsoft.Azure.Cosmos.Linq;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,55 +11,53 @@ namespace TocaTudoPlayer.Xamarim
     {
         private const string APP_EXCEPTION_CONTAINER = "AppException";
         private const string APP_CONFIG_CONTAINER = "AppConfig";
-        private readonly CosmosClient _dbClient;
-        private Container _container;
+        //private readonly CosmosClient _dbClient;
+        //private Container _container;
         private string _databaseName;
-        public AzureCosmosConn(CosmosClient dbClient, string databaseName)
-        {
-            _dbClient = dbClient;
-            _databaseName = databaseName;
-        }
-        public AppConfig GetAppConfig()
-        {
-            _container = _dbClient.GetContainer(_databaseName, APP_CONFIG_CONTAINER);
-       
-            FeedIterator<TbAppConfig> query = _container.GetItemLinqQueryable<TbAppConfig>(true)
-                                                        .ToFeedIterator();
+        //public AzureCosmosConn(CosmosClient dbClient, string databaseName)
+        //{
+        //    _dbClient = dbClient;
+        //    _databaseName = databaseName;
+        //}
+        //public async Task<AppConfig> GetAppConfig()
+        //{
+        //    _container = _dbClient.GetContainer(_databaseName, APP_CONFIG_CONTAINER);
 
-            while (query.HasMoreResults)
-            {
-                var task = query.ReadNextAsync();
-                task.Wait();
+        //    FeedIterator<AppConfig> query = _container.GetItemLinqQueryable<AppConfig>(true)
+        //                                              .ToFeedIterator();
 
-                TbAppConfig currentResultSet = task.Result.FirstOrDefault();
+        //    while (query.HasMoreResults)
+        //    {
+        //        var task = await query.ReadNextAsync();
 
-                return new AppConfig()
-                {
-                    Id = currentResultSet.Id,
-                    AdMob = new AppConfigAdMob()
-                    {
-                        AdsMusicBanner = currentResultSet.AdMob.AdsMusicBanner,
-                        AdsIntersticialAlbum = currentResultSet.AdMob.AdsIntersticialAlbum,
-                        AdsActiveProdMode = currentResultSet.AdMob.AdsActiveProdMode
-                    }
-                };
-            }
+        //        AppConfig currentResultSet = task.FirstOrDefault();
 
-            return null;
-        }
-        public async Task InsertAppException(TbAppException item)
-        {
-            item.Id = Guid.NewGuid().ToString();
-            _container = _dbClient.GetContainer(_databaseName, APP_EXCEPTION_CONTAINER);
+        //        return new AppConfig()
+        //        {
+        //            Id = currentResultSet.Id,
+        //            AppVersion = currentResultSet.AppVersion,
+        //            AppBuildVersion = currentResultSet.AppBuildVersion,
+        //            AlbumMerchanMinutesIntervalToShow = currentResultSet.AlbumMerchanMinutesIntervalToShow,
+        //            MusicMerchanMinutesIntervalToShow = currentResultSet.MusicMerchanMinutesIntervalToShow,
+        //            TotalMusicsWillPlayBeforeMerchan = currentResultSet.TotalMusicsWillPlayBeforeMerchan
+        //        };
+        //    }
 
-            await _container.CreateItemAsync(item, new PartitionKey(item.Id));
-        }
-        public async Task InsertAppConfig(TbAppConfig item)
-        {
-            item.Id = Guid.NewGuid().ToString();
-            _container = _dbClient.GetContainer(_databaseName, APP_CONFIG_CONTAINER);
+        //    return null;
+        //}
+        //public async Task InsertAppException(TbAppException item)
+        //{
+        //    item.Id = Guid.NewGuid().ToString();
+        //    _container = _dbClient.GetContainer(_databaseName, APP_EXCEPTION_CONTAINER);
 
-            await _container.CreateItemAsync(item, new PartitionKey(item.Id));
-        }
+        //    _container.CreateItemAsync(item, new PartitionKey(item.Id)).Wait();
+        //}
+        //public async Task InsertAppConfig(TbAppConfig item)
+        //{
+        //    item.Id = Guid.NewGuid().ToString();
+        //    _container = _dbClient.GetContainer(_databaseName, APP_CONFIG_CONTAINER);
+
+        //    await _container.CreateItemAsync(item, new PartitionKey(item.Id));
+        //}
     }
 }

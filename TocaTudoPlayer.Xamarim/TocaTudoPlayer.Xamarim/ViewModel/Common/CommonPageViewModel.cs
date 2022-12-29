@@ -3,15 +3,17 @@ using Xamarin.Forms;
 
 namespace TocaTudoPlayer.Xamarim
 {
-    public class CommonPageViewModel : ICommonPageViewModel
+    public class CommonPageViewModel : INotifyPropertyChanged
     {
-        private readonly ICommonFormDownloadViewModel _formDownloadViewModel;
+        private readonly CommonFormDownloadViewModel _formDownloadViewModel;
         private ImageSource _albumImage;
+        private int _internetConnectionAlertGridSize;
         private int _albumPlayingGridSize;
         private string _albumName;
         public event PropertyChangedEventHandler PropertyChanged;
-        public CommonPageViewModel(ICommonFormDownloadViewModel formDownloadViewModel) 
+        public CommonPageViewModel(CommonFormDownloadViewModel formDownloadViewModel) 
         {
+            _internetConnectionAlertGridSize = 0;
             _albumPlayingGridSize = 0;
             _formDownloadViewModel = formDownloadViewModel;
         }
@@ -35,18 +37,28 @@ namespace TocaTudoPlayer.Xamarim
                 OnPropertyChanged(nameof(AlbumImage));
             }
         }
+        public int InternetConnectionAlertGridSize
+        {
+            get { return _internetConnectionAlertGridSize; }
+            set
+            {
+
+                _internetConnectionAlertGridSize = value;
+                OnPropertyChanged(nameof(InternetConnectionAlertGridSize));
+            }
+        }
         public int AlbumPlayingGridSize
         {
             get { return _albumPlayingGridSize; }
-            private set
+            set
             {
 
                 _albumPlayingGridSize = value;
                 OnPropertyChanged(nameof(AlbumPlayingGridSize));
             }
         }
-        public NavigationPage SelectedMusic { get; set; }
-        public ICommonFormDownloadViewModel FormDownloadViewModel
+        public AlbumPlayer SelectedAlbum { get; set; }
+        public CommonFormDownloadViewModel FormDownloadViewModel
         {
             get { return _formDownloadViewModel; }
         }
@@ -54,7 +66,7 @@ namespace TocaTudoPlayer.Xamarim
         {
             AlbumName = albumName;
             AlbumImage = albumImage;
-            AlbumPlayingGridSize = 150;
+            AlbumPlayingGridSize = 80;
         }
         private void OnPropertyChanged(string propertyName)
         {

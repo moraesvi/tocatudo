@@ -4,6 +4,8 @@
     {
         public string Album { get; set; }
         public string ImgAlbum { get; set; }
+        public string MusicTime { get; set; }
+        public long MusicTimeTotalSeconds { get; set; }
         public ApiPlaylist[] Playlist { get; set; } 
     }
     public class ApiPlaylist

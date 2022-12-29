@@ -17,8 +17,8 @@ namespace TocaTudoPlayer.Xamarim.ViewModel
         }
         public void Execute(object parameter)
         {
-            _vm.ShowPlayingOfflineInfo = false;
-            _vm.ShowHideDownloadMusicOptions = !_vm.ShowHideDownloadMusicOptions;
+            //_vm.ShowPlayingOfflineInfo = false;
+            //_vm.ShowHideDownloadMusicOptions = !_vm.ShowHideDownloadMusicOptions;
         }
     }
 }

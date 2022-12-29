@@ -7,6 +7,8 @@ namespace TocaTudoPlayer.Xamarim
     {
         int TotalInProgress { get; set; }
         bool IsFormDownloadVisible { get; set; }
+        bool MusicDownloadModeIsVisible { get; set; }
+        bool AlbumDownloadModeIsVisible { get; set; }
         string MusicName { get; set; }
         ImageSource ImgMusic { get; set; }
         HttpDownload Download { get; set; }

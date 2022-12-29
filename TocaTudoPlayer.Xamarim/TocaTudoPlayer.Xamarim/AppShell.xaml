@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://xamarin.com/schemas/2014/forms"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:local="clr-namespace:TocaTudoPlayer.Xamarim"
+       xmlns:pages="clr-namespace:TocaTudoPlayer.Xamarim.Pages"
+       xmlns:resources="clr-namespace:TocaTudoPlayer.Xamarim.Resources"
+       x:Class="TocaTudoPlayer.Xamarim.AppShell">
+    <TabBar>
+        <Tab Title="{x:Static resources:AppResource.MusicAlbumButton}">
+            <Tab.Icon>
+                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.FileImageO}"/>
+            </Tab.Icon>
+            <ShellContent>
+                <pages:Album/>
+            </ShellContent>
+        </Tab>
+        <Tab Title="{x:Static resources:AppResource.MusicMusicButton}">
+            <Tab.Icon>
+                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.Music}"/>
+            </Tab.Icon>
+            <ShellContent>
+                <pages:Music/>
+            </ShellContent>
+        </Tab>
+        <Tab Title="{x:Static resources:AppResource.MusicSavedButton}">
+            <Tab.Icon>
+                <FontImageSource FontFamily="FontAwesomeBold" Glyph="{x:Static local:Icon.ArrowDown}"/>
+            </Tab.Icon>
+            <ShellContent>
+                <pages:Saved/>
+            </ShellContent>
+        </Tab>
+    </TabBar>
+</Shell>
